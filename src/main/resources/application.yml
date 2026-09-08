@@ -1,0 +1,40 @@
+spring:
+  application:
+    name: earnings-monitor
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/earnings?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    username: ${DB_USERNAME:earnings}
+    password: ${DB_PASSWORD:earnings}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+
+earnings:
+  simulation:
+    enabled: ${EARNINGS_SIMULATION_ENABLED:false}
+  monitor:
+    enabled: ${EARNINGS_MONITOR_ENABLED:true}
+    interval-seconds: ${EARNINGS_MONITOR_INTERVAL_SECONDS:30}
+  sec:
+    base-url: https://www.sec.gov
+    data-base-url: https://data.sec.gov
+    user-agent: ${SEC_USER_AGENT}
+    connect-timeout: 5s
+    read-timeout: 30s
+    min-request-interval: 120ms
+  openai:
+    base-url: https://api.openai.com
+    api-key: ${OPENAI_API_KEY:}
+    model: ${OPENAI_MODEL:gpt-5-mini}
+    max-input-chars: ${OPENAI_MAX_INPUT_CHARS:60000}
+  telegram:
+    enabled: ${TELEGRAM_ENABLED:false}
+    bot-token: ${TELEGRAM_BOT_TOKEN:}
+    chat-id: ${TELEGRAM_CHAT_ID:}
+
+logging:
+  level:
+    com.selfinvestor.earnings: INFO

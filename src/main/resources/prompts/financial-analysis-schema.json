@@ -1,0 +1,49 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["company","ticker","fiscalQuarter","headline","financials","guidance","segments","positives","negatives","risks","managementCommentary","fundamentalTrend","fundamentalTrendReason","investmentThesisChanged","investmentThesisChangeReason","consensusComparisonAvailable","consensusComparisonNote","qualityScore","summary"],
+  "properties": {
+    "company": {"type":["string","null"]},
+    "ticker": {"type":["string","null"]},
+    "fiscalQuarter": {"type":["string","null"]},
+    "headline": {"type":["string","null"]},
+    "financials": {
+      "type":"object", "additionalProperties":false,
+      "required":["revenue","grossMargin","operatingMargin","operatingIncome","netIncome","eps","freeCashFlow","capex","cash","debt"],
+      "properties": {
+        "revenue":{"$ref":"#/$defs/metric"},
+        "grossMargin":{"$ref":"#/$defs/margin"},
+        "operatingMargin":{"$ref":"#/$defs/margin"},
+        "operatingIncome":{"type":["string","null"]}, "netIncome":{"type":["string","null"]},
+        "eps":{"type":["string","null"]}, "freeCashFlow":{"type":["string","null"]},
+        "capex":{"type":["string","null"]}, "cash":{"type":["string","null"]}, "debt":{"type":["string","null"]}
+      }
+    },
+    "guidance": {
+      "type":"object", "additionalProperties":false,
+      "required":["nextQuarterRevenueLow","nextQuarterRevenueHigh","grossMargin","fullYearGuidance"],
+      "properties": {
+        "nextQuarterRevenueLow":{"type":["string","null"]}, "nextQuarterRevenueHigh":{"type":["string","null"]},
+        "grossMargin":{"type":["string","null"]}, "fullYearGuidance":{"type":["string","null"]}
+      }
+    },
+    "segments":{"type":"array","items":{"$ref":"#/$defs/segment"}},
+    "positives":{"type":"array","items":{"type":"string"}},
+    "negatives":{"type":"array","items":{"type":"string"}},
+    "risks":{"type":"array","items":{"type":"string"}},
+    "managementCommentary":{"type":"array","items":{"type":"string"}},
+    "fundamentalTrend":{"type":"string","enum":["IMPROVING","STABLE","DETERIORATING"]},
+    "fundamentalTrendReason":{"type":["string","null"]},
+    "investmentThesisChanged":{"type":"boolean"},
+    "investmentThesisChangeReason":{"type":["string","null"]},
+    "consensusComparisonAvailable":{"type":"boolean","enum":[false]},
+    "consensusComparisonNote":{"type":"string"},
+    "qualityScore":{"type":["integer","null"],"minimum":1,"maximum":10},
+    "summary":{"type":"string"}
+  },
+  "$defs": {
+    "metric":{"type":["object","null"],"additionalProperties":false,"required":["value","yoyGrowth","qoqGrowth"],"properties":{"value":{"type":["string","null"]},"yoyGrowth":{"type":["number","null"]},"qoqGrowth":{"type":["number","null"]}}},
+    "margin":{"type":["object","null"],"additionalProperties":false,"required":["value","previousQuarter","trend"],"properties":{"value":{"type":["string","null"]},"previousQuarter":{"type":["string","null"]},"trend":{"type":["string","null"]}}},
+    "segment":{"type":"object","additionalProperties":false,"required":["name","revenue","yoyGrowth","qoqGrowth","commentary"],"properties":{"name":{"type":"string"},"revenue":{"type":["string","null"]},"yoyGrowth":{"type":["number","null"]},"qoqGrowth":{"type":["number","null"]},"commentary":{"type":["string","null"]}}}
+  }
+}
