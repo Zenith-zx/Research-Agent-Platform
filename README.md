@@ -44,6 +44,8 @@ MonitorScheduler
 
 不要求本机安装 Maven；仓库包含 Maven Wrapper。
 
+项目通过 `.mvn/maven.config` 自动加载 `.mvn/settings.xml`，直接连接 Maven Central，并使用独立的 `${user.home}/.m2/repository-self-investor` 本地仓库。它不会修改或依赖公司级 `~/.m2/settings.xml`。首次导入会重新下载依赖；在 IntelliJ IDEA 中执行一次 Maven Reload 即可。
+
 ## 3. 启动数据库
 
 ```bash

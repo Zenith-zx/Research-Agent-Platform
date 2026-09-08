@@ -2,12 +2,43 @@
 <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
           xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
+    <!-- 仅供 self-investor 使用，不读取或修改公司的 ~/.m2/settings.xml。 -->
+    <localRepository>${user.home}/.m2/repository-self-investor</localRepository>
+    <interactiveMode>true</interactiveMode>
+    <offline>false</offline>
+
     <mirrors>
         <mirror>
-            <id>maven-central</id>
-            <name>Maven Central</name>
+            <id>self-investor-central</id>
+            <name>Self Investor Maven Central</name>
             <url>https://repo.maven.apache.org/maven2</url>
             <mirrorOf>*</mirrorOf>
         </mirror>
     </mirrors>
+
+    <profiles>
+        <profile>
+            <id>self-investor</id>
+            <repositories>
+                <repository>
+                    <id>central</id>
+                    <url>https://repo.maven.apache.org/maven2</url>
+                    <releases><enabled>true</enabled></releases>
+                    <snapshots><enabled>false</enabled></snapshots>
+                </repository>
+            </repositories>
+            <pluginRepositories>
+                <pluginRepository>
+                    <id>central-plugins</id>
+                    <url>https://repo.maven.apache.org/maven2</url>
+                    <releases><enabled>true</enabled></releases>
+                    <snapshots><enabled>false</enabled></snapshots>
+                </pluginRepository>
+            </pluginRepositories>
+        </profile>
+    </profiles>
+
+    <activeProfiles>
+        <activeProfile>self-investor</activeProfile>
+    </activeProfiles>
 </settings>

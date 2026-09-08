@@ -29,8 +29,9 @@ public class SecFilingMonitor implements FilingMonitor {
 
     boolean isEarningsRelated(SecFilingMetadata filing) {
         String form = filing.formType().toUpperCase(Locale.ROOT);
-        if (PERIODIC_FORMS.contains(form)) return true;
-        return form.equals("8-K") &&
-                filing.items() != null && filing.items().contains("2.02");
+        if (PERIODIC_FORMS.contains(form)) {
+            return true;
+        }
+        return form.equals("8-K") && filing.items() != null && filing.items().contains("2.02");
     }
 }
