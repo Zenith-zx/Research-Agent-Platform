@@ -3,11 +3,8 @@ spring:
     url: jdbc:h2:mem:earnings;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
     username: sa
     password:
-  jpa:
-    hibernate:
-      ddl-auto: create-drop
   flyway:
-    enabled: false
+    enabled: true
 earnings:
   simulation:
     enabled: false

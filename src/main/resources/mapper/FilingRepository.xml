@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.selfinvestor.earnings.repository.FilingRepository">
+    <resultMap id="FilingMap" type="com.selfinvestor.earnings.filing.FilingPO">
+        <id property="id" column="filing_id"/>
+        <result property="accessionNumber" column="accession_number"/>
+        <result property="formType" column="form_type"/>
+        <result property="filingDate" column="filing_date"/>
+        <result property="acceptedAt" column="accepted_at"/>
+        <result property="primaryDocument" column="primary_document"/>
+        <result property="secUrl" column="sec_url"/>
+        <result property="status" column="status"/>
+        <result property="errorMessage" column="error_message"/>
+        <result property="createdAt" column="filing_created_at"/>
+        <result property="updatedAt" column="filing_updated_at"/>
+        <association property="company" javaType="com.selfinvestor.earnings.company.CompanyPO">
+            <id property="id" column="company_id"/>
+            <result property="ticker" column="company_ticker"/>
+            <result property="cik" column="company_cik"/>
+            <result property="companyName" column="company_name"/>
+            <result property="enabled" column="company_enabled"/>
+            <result property="createdAt" column="company_created_at"/>
+            <result property="updatedAt" column="company_updated_at"/>
+        </association>
+    </resultMap>
+
+    <sql id="FilingJoinColumns">
+        f.id AS filing_id, f.accession_number, f.form_type, f.filing_date, f.accepted_at,
+        f.primary_document, f.sec_url, f.status, f.error_message,
+        f.created_at AS filing_created_at, f.updated_at AS filing_updated_at,
+        c.id AS company_id, c.ticker AS company_ticker, c.cik AS company_cik,
+        c.company_name, c.enabled AS company_enabled,
+        c.created_at AS company_created_at, c.updated_at AS company_updated_at
+    </sql>
+
+    <select id="existsByAccessionNumber" resultType="boolean">
+        SELECT CASE WHEN COUNT(*) &gt; 0 THEN TRUE ELSE FALSE END FROM FILING WHERE accession_number = #{accessionNumber}
+    </select>
+    <select id="findByAccessionNumber" resultMap="FilingMap">
+        SELECT <include refid="FilingJoinColumns"/> FROM FILING f JOIN COMPANY c ON c.id = f.company_id
+        WHERE f.accession_number = #{accessionNumber} LIMIT 1
+    </select>
+    <select id="findOneById" resultMap="FilingMap">
+        SELECT <include refid="FilingJoinColumns"/> FROM FILING f JOIN COMPANY c ON c.id = f.company_id
+        WHERE f.id = #{id}
+    </select>
+    <select id="findById" resultMap="FilingMap">
+        SELECT <include refid="FilingJoinColumns"/> FROM FILING f JOIN COMPANY c ON c.id = f.company_id
+        WHERE f.id = #{id}
+    </select>
+    <select id="findAllByStatusIn" resultMap="FilingMap">
+        SELECT <include refid="FilingJoinColumns"/> FROM FILING f JOIN COMPANY c ON c.id = f.company_id
+        WHERE f.status IN
+        <foreach collection="statuses" item="status" open="(" separator="," close=")">#{status}</foreach>
+        ORDER BY f.id
+    </select>
+    <select id="findAllByOrderByIdDesc" resultMap="FilingMap">
+        SELECT <include refid="FilingJoinColumns"/> FROM FILING f JOIN COMPANY c ON c.id = f.company_id ORDER BY f.id DESC
+    </select>
+    <insert id="insert" parameterType="com.selfinvestor.earnings.filing.FilingPO"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+        INSERT INTO FILING (company_id, accession_number, form_type, filing_date, accepted_at,
+                            primary_document, sec_url, status, error_message, created_at, updated_at)
+        VALUES (#{company.id}, #{accessionNumber}, #{formType}, #{filingDate}, #{acceptedAt},
+                #{primaryDocument}, #{secUrl}, #{status}, #{errorMessage}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    </insert>
+    <update id="updateStatus">
+        UPDATE FILING SET status = #{status}, error_message = #{errorMessage}, updated_at = CURRENT_TIMESTAMP WHERE id = #{id}
+    </update>
+    <select id="count" resultType="long">SELECT COUNT(*) FROM FILING</select>
+</mapper>

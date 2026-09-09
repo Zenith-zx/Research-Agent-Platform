@@ -1,4 +1,4 @@
-CREATE TABLE company (
+CREATE TABLE COMPANY (
     id BIGINT NOT NULL AUTO_INCREMENT,
     ticker VARCHAR(16) NOT NULL,
     cik VARCHAR(10) NOT NULL,
@@ -7,11 +7,11 @@ CREATE TABLE company (
     created_at TIMESTAMP(6) NOT NULL,
     updated_at TIMESTAMP(6) NOT NULL,
     PRIMARY KEY (id),
-    CONSTRAINT uk_company_ticker UNIQUE (ticker),
-    CONSTRAINT uk_company_cik UNIQUE (cik)
+    CONSTRAINT UK_COMPANY_TICKER UNIQUE (ticker),
+    CONSTRAINT UK_COMPANY_CIK UNIQUE (cik)
 );
 
-CREATE TABLE filing (
+CREATE TABLE FILING (
     id BIGINT NOT NULL AUTO_INCREMENT,
     company_id BIGINT NOT NULL,
     accession_number VARCHAR(32) NOT NULL,
@@ -25,13 +25,13 @@ CREATE TABLE filing (
     created_at TIMESTAMP(6) NOT NULL,
     updated_at TIMESTAMP(6) NOT NULL,
     PRIMARY KEY (id),
-    CONSTRAINT uk_filing_accession UNIQUE (accession_number),
-    CONSTRAINT fk_filing_company FOREIGN KEY (company_id) REFERENCES company(id),
-    INDEX idx_filing_company_date (company_id, filing_date),
-    INDEX idx_filing_status (status)
+    CONSTRAINT UK_FILING_ACCESSION UNIQUE (accession_number),
+    CONSTRAINT FK_FILING_COMPANY FOREIGN KEY (company_id) REFERENCES COMPANY(id),
+    INDEX IDX_FILING_COMPANY_DATE (company_id, filing_date),
+    INDEX IDX_FILING_STATUS (status)
 );
 
-CREATE TABLE filing_document (
+CREATE TABLE FILING_DOCUMENT (
     id BIGINT NOT NULL AUTO_INCREMENT,
     filing_id BIGINT NOT NULL,
     document_type VARCHAR(64) NULL,
@@ -42,11 +42,11 @@ CREATE TABLE filing_document (
     clean_content LONGTEXT NULL,
     selected_for_analysis BOOLEAN NOT NULL DEFAULT FALSE,
     PRIMARY KEY (id),
-    CONSTRAINT uk_filing_document UNIQUE (filing_id, document_name),
-    CONSTRAINT fk_document_filing FOREIGN KEY (filing_id) REFERENCES filing(id) ON DELETE CASCADE
+    CONSTRAINT UK_FILING_DOCUMENT UNIQUE (filing_id, document_name),
+    CONSTRAINT FK_DOCUMENT_FILING FOREIGN KEY (filing_id) REFERENCES FILING(id) ON DELETE CASCADE
 );
 
-CREATE TABLE ai_analysis (
+CREATE TABLE AI_ANALYSIS (
     id BIGINT NOT NULL AUTO_INCREMENT,
     filing_id BIGINT NOT NULL,
     model VARCHAR(100) NOT NULL,
@@ -54,6 +54,6 @@ CREATE TABLE ai_analysis (
     summary TEXT NOT NULL,
     created_at TIMESTAMP(6) NOT NULL,
     PRIMARY KEY (id),
-    CONSTRAINT uk_analysis_filing UNIQUE (filing_id),
-    CONSTRAINT fk_analysis_filing FOREIGN KEY (filing_id) REFERENCES filing(id) ON DELETE CASCADE
+    CONSTRAINT UK_ANALYSIS_FILING UNIQUE (filing_id),
+    CONSTRAINT FK_ANALYSIS_FILING FOREIGN KEY (filing_id) REFERENCES FILING(id) ON DELETE CASCADE
 );

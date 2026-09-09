@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.selfinvestor.earnings.repository.FilingDocumentRepository">
+    <resultMap id="DocumentMap" type="com.selfinvestor.earnings.filing.FilingDocumentPO">
+        <id property="id" column="id"/>
+        <result property="documentType" column="document_type"/>
+        <result property="documentName" column="document_name"/>
+        <result property="description" column="description"/>
+        <result property="url" column="url"/>
+        <result property="rawContent" column="raw_content"/>
+        <result property="cleanContent" column="clean_content"/>
+        <result property="selectedForAnalysis" column="selected_for_analysis"/>
+        <association property="filing" javaType="com.selfinvestor.earnings.filing.FilingPO">
+            <id property="id" column="filing_id"/>
+        </association>
+    </resultMap>
+    <sql id="DocumentColumns">id, filing_id, document_type, document_name, description, url, raw_content, clean_content, selected_for_analysis</sql>
+
+    <select id="findAllByFilingIdOrderById" resultMap="DocumentMap">
+        SELECT <include refid="DocumentColumns"/> FROM FILING_DOCUMENT WHERE filing_id = #{filingId} ORDER BY id
+    </select>
+    <select id="findAllByFilingIdAndSelectedForAnalysisTrue" resultMap="DocumentMap">
+        SELECT <include refid="DocumentColumns"/> FROM FILING_DOCUMENT WHERE filing_id = #{filingId} AND selected_for_analysis = TRUE ORDER BY id
+    </select>
+    <insert id="insert" parameterType="com.selfinvestor.earnings.filing.FilingDocumentPO"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+        INSERT INTO FILING_DOCUMENT (filing_id, document_type, document_name, description, url, raw_content, clean_content, selected_for_analysis)
+        VALUES (#{filing.id}, #{documentType}, #{documentName}, #{description}, #{url}, #{rawContent}, #{cleanContent}, #{selectedForAnalysis})
+    </insert>
+    <update id="updateParsed" parameterType="com.selfinvestor.earnings.filing.FilingDocumentPO">
+        UPDATE FILING_DOCUMENT SET clean_content = #{cleanContent}, selected_for_analysis = #{selectedForAnalysis} WHERE id = #{id}
+    </update>
+</mapper>

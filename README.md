@@ -1,6 +1,6 @@
 # self-investor：美股财报监听与 AI 分析 MVP
 
-这是一个 Java 17 / Spring Boot 3 的个人投资研究后端。它定时检查关注公司的 SEC EDGAR filings，识别财报相关的 `8-K`、`10-Q`、`10-K`，选择最有价值的 Earnings Release / `EX-99.1`，清洗内容，调用 OpenAI Structured Outputs 生成结构化基本面分析，持久化到 MySQL，并通过 Telegram 通知。
+这是一个 Java 17 / Spring Boot 3 / MyBatis 的个人投资研究后端。它定时检查关注公司的 SEC EDGAR filings，识别财报相关的 `8-K`、`10-Q`、`10-K`，选择最有价值的 Earnings Release / `EX-99.1`，清洗内容，调用 OpenAI Structured Outputs 生成结构化基本面分析，持久化到 MySQL，并通过 Telegram 通知。
 
 本项目不包含自动交易、复杂前端、市场一致预期或估值功能。
 
@@ -23,16 +23,16 @@ MonitorScheduler
 
 主要 package：
 
-- `company`：关注列表与 REST API
+- `company`：关注列表、MyBatis Mapper 接口与 REST API
 - `monitor`：调度、SEC 类型过滤、开发模拟入口
 - `sec`：SEC submissions 与 filing 下载客户端
-- `filing`：实体、去重、附件选择、解析、分块与恢复
-- `analysis`：OpenAI 客户端、Structured Output DTO、分析存储和查询
+- `filing`：实体、MyBatis Mapper 接口、去重、附件选择、解析、分块与恢复
+- `analysis`：OpenAI 客户端、MyBatis Mapper 接口、Structured Output DTO、分析存储和查询
 - `notification`：通知扩展接口与 Telegram 实现
 - `event`：轻量级 Spring ApplicationEvent 流水线
 - `config`：类型安全配置与线程池
 
-数据库由 `src/main/resources/db/migration/V1__initial_schema.sql` 创建。`filing.accession_number` 和 `ai_analysis.filing_id` 均有唯一约束。应用重启后只恢复未完成流水线，`COMPLETED` filing 不会再次分析。
+数据库由 `src/main/resources/db/migration/V1__initial_schema.sql` 创建，表名统一为大写。业务 SQL 全部位于 `src/main/resources/mapper/*.xml`，Java Mapper 接口不包含注解 SQL。`FILING.accession_number` 和 `AI_ANALYSIS.filing_id` 均有唯一约束。应用重启后只恢复未完成流水线，`COMPLETED` filing 不会再次分析。
 
 ## 2. 环境要求
 
@@ -54,6 +54,8 @@ docker compose ps
 ```
 
 默认连接是 `jdbc:mysql://localhost:3306/earnings`，用户名和密码均为 `earnings`。生产环境必须替换默认密码。Flyway 在应用启动时自动建表和升级 schema。
+
+如果你已经用旧版小写表名执行过 `V1__initial_schema.sql`，本次仍处于 MVP 初始化阶段，建议删除本地 `earnings` 数据库或 Docker volume 后重新创建；否则 Flyway 会因 V1 checksum 变化拒绝启动。不要在已有生产数据的数据库上直接删除，应先另写数据迁移脚本。
 
 ## 4. 环境变量
 
@@ -109,7 +111,7 @@ curl -X PATCH http://localhost:8080/api/companies/1/enabled \
 也可以直接执行 SQL。CIK 建议保存为 10 位字符串：
 
 ```sql
-INSERT INTO company (ticker, cik, company_name, enabled, created_at, updated_at) VALUES
+INSERT INTO COMPANY (ticker, cik, company_name, enabled, created_at, updated_at) VALUES
 ('CRDO',  '0001807794', 'Credo Technology Group Holding Ltd', TRUE, NOW(6), NOW(6)),
 ('NVDA',  '0001045810', 'NVIDIA Corporation', TRUE, NOW(6), NOW(6)),
 ('MU',    '0000723125', 'Micron Technology Inc', TRUE, NOW(6), NOW(6)),
@@ -179,13 +181,13 @@ curl http://localhost:8080/api/filings/{filingId}/analysis
 
 ```sql
 SELECT id, accession_number, form_type, status, error_message, created_at
-FROM filing ORDER BY id DESC;
+FROM FILING ORDER BY id DESC;
 
 SELECT filing_id, model, summary, analysis_json, created_at
-FROM ai_analysis ORDER BY id DESC;
+FROM AI_ANALYSIS ORDER BY id DESC;
 ```
 
-原始附件和清洗内容保存在 `filing_document.raw_content` 与 `clean_content`。AI 输出中 `consensusComparisonAvailable` 被强制为 `false`，因为本版本没有接入分析师一致预期，不能判断 Beat/Miss。
+原始附件和清洗内容保存在 `FILING_DOCUMENT.raw_content` 与 `clean_content`。AI 输出中 `consensusComparisonAvailable` 被强制为 `false`，因为本版本没有接入分析师一致预期，不能判断 Beat/Miss。
 
 ## 10. 已知限制
 

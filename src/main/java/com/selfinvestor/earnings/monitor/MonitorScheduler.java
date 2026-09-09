@@ -1,30 +1,34 @@
 package com.selfinvestor.earnings.monitor;
 
-import com.selfinvestor.earnings.company.CompanyService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.selfinvestor.earnings.service.CompanyService;
+import com.selfinvestor.earnings.company.CompanyPO;
+import jakarta.annotation.Resource;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 @Component
+@Slf4j
 @ConditionalOnProperty(prefix = "earnings.monitor", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class MonitorScheduler {
-    private static final Logger log = LoggerFactory.getLogger(MonitorScheduler.class);
-    private final CompanyService companies;
-    private final FilingMonitor monitor;
+    @Resource
+    private CompanyService companies;
+    @Resource
+    private FilingMonitor monitor;
 
-    public MonitorScheduler(CompanyService companies, FilingMonitor monitor) {
-        this.companies = companies;
-        this.monitor = monitor;
-    }
-
+    /**
+     * 定时轮询所有启用监听的公司。
+     */
     @Scheduled(initialDelayString = "${earnings.monitor.initial-delay-ms:10000}",
             fixedDelayString = "#{${earnings.monitor.interval-seconds:30} * 1000}")
     public void poll() {
-        for (var company : companies.enabledCompanies()) {
-            try { monitor.poll(company); }
-            catch (RuntimeException exception) { log.error("SEC monitor failed for {}: {}", company.getTicker(), exception.getMessage()); }
+        for (CompanyPO company : companies.enabledCompanies()) {
+            try {
+                monitor.poll(company);
+            } catch (RuntimeException exception) {
+                log.error("SEC monitor failed for {}: {}", company.getTicker(), exception.getMessage());
+            }
         }
     }
 }

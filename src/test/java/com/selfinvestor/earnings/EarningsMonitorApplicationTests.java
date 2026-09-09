@@ -5,5 +5,10 @@ import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
 class EarningsMonitorApplicationTests {
-    @Test void contextLoads() {}
+    /**
+     * 验证 Spring 应用上下文能够正常启动。
+     */
+    @Test
+    void contextLoads() {
+    }
 }

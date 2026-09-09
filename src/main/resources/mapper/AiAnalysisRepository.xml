@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.selfinvestor.earnings.repository.AiAnalysisRepository">
+    <resultMap id="AnalysisMap" type="com.selfinvestor.earnings.analysis.AiAnalysisPO">
+        <id property="id" column="analysis_id"/>
+        <result property="model" column="model"/>
+        <result property="analysisJson" column="analysis_json"/>
+        <result property="summary" column="summary"/>
+        <result property="createdAt" column="analysis_created_at"/>
+        <association property="filing" javaType="com.selfinvestor.earnings.filing.FilingPO">
+            <id property="id" column="filing_id"/>
+            <result property="accessionNumber" column="accession_number"/>
+            <result property="formType" column="form_type"/>
+            <result property="filingDate" column="filing_date"/>
+            <result property="acceptedAt" column="accepted_at"/>
+            <result property="primaryDocument" column="primary_document"/>
+            <result property="secUrl" column="sec_url"/>
+            <result property="status" column="status"/>
+            <result property="errorMessage" column="error_message"/>
+            <association property="company" javaType="com.selfinvestor.earnings.company.CompanyPO">
+                <id property="id" column="company_id"/>
+                <result property="ticker" column="company_ticker"/>
+                <result property="cik" column="company_cik"/>
+                <result property="companyName" column="company_name"/>
+                <result property="enabled" column="company_enabled"/>
+            </association>
+        </association>
+    </resultMap>
+    <sql id="AnalysisJoinColumns">
+        a.id AS analysis_id, a.model, a.analysis_json, a.summary, a.created_at AS analysis_created_at,
+        f.id AS filing_id, f.accession_number, f.form_type, f.filing_date, f.accepted_at,
+        f.primary_document, f.sec_url, f.status, f.error_message,
+        c.id AS company_id, c.ticker AS company_ticker, c.cik AS company_cik,
+        c.company_name, c.enabled AS company_enabled
+    </sql>
+    <select id="findByFilingId" resultMap="AnalysisMap">
+        SELECT <include refid="AnalysisJoinColumns"/> FROM AI_ANALYSIS a
+        JOIN FILING f ON f.id = a.filing_id JOIN COMPANY c ON c.id = f.company_id
+        WHERE a.filing_id = #{filingId}
+    </select>
+    <select id="findOneById" resultMap="AnalysisMap">
+        SELECT <include refid="AnalysisJoinColumns"/> FROM AI_ANALYSIS a
+        JOIN FILING f ON f.id = a.filing_id JOIN COMPANY c ON c.id = f.company_id
+        WHERE a.id = #{id}
+    </select>
+    <insert id="insert" parameterType="com.selfinvestor.earnings.analysis.AiAnalysisPO"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+        INSERT INTO AI_ANALYSIS (filing_id, model, analysis_json, summary, created_at)
+        VALUES (#{filing.id}, #{model}, #{analysisJson}, #{summary}, CURRENT_TIMESTAMP)
+    </insert>
+</mapper>

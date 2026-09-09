@@ -1,70 +1,118 @@
 package com.selfinvestor.earnings.config;
 
+import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+
 import java.time.Duration;
 
+/**
+ * 应用业务配置。
+ */
+@Data
 @ConfigurationProperties(prefix = "earnings")
 public class EarningsProperties {
+    /**
+     * 监听任务配置。
+     */
     private final Monitor monitor = new Monitor();
+    /**
+     * SEC 接口配置。
+     */
     private final Sec sec = new Sec();
+    /**
+     * OpenAI 接口配置。
+     */
     private final OpenAi openai = new OpenAi();
+    /**
+     * Telegram 通知配置。
+     */
     private final Telegram telegram = new Telegram();
-    public Monitor getMonitor() { return monitor; }
-    public Sec getSec() { return sec; }
-    public OpenAi getOpenai() { return openai; }
-    public Telegram getTelegram() { return telegram; }
 
+    /**
+     * Filing 监听配置。
+     */
+    @Data
     public static class Monitor {
+        /**
+         * 是否启用监听。
+         */
         private boolean enabled = true;
+        /**
+         * 监听间隔秒数。
+         */
         private long intervalSeconds = 30;
-        public boolean isEnabled() { return enabled; }
-        public void setEnabled(boolean enabled) { this.enabled = enabled; }
-        public long getIntervalSeconds() { return intervalSeconds; }
-        public void setIntervalSeconds(long intervalSeconds) { this.intervalSeconds = intervalSeconds; }
     }
+
+    /**
+     * SEC HTTP 接口配置。
+     */
+    @Data
     public static class Sec {
+        /**
+         * SEC 网站根地址。
+         */
         private String baseUrl;
+        /**
+         * SEC Data API 根地址。
+         */
         private String dataBaseUrl;
+        /**
+         * SEC 要求的 User-Agent。
+         */
         private String userAgent;
+        /**
+         * 连接超时时间。
+         */
         private Duration connectTimeout = Duration.ofSeconds(5);
+        /**
+         * 响应读取超时时间。
+         */
         private Duration readTimeout = Duration.ofSeconds(30);
+        /**
+         * SEC 请求最小时间间隔。
+         */
         private Duration minRequestInterval = Duration.ofMillis(120);
-        public String getBaseUrl() { return baseUrl; }
-        public void setBaseUrl(String baseUrl) { this.baseUrl = baseUrl; }
-        public String getDataBaseUrl() { return dataBaseUrl; }
-        public void setDataBaseUrl(String dataBaseUrl) { this.dataBaseUrl = dataBaseUrl; }
-        public String getUserAgent() { return userAgent; }
-        public void setUserAgent(String userAgent) { this.userAgent = userAgent; }
-        public Duration getConnectTimeout() { return connectTimeout; }
-        public void setConnectTimeout(Duration connectTimeout) { this.connectTimeout = connectTimeout; }
-        public Duration getReadTimeout() { return readTimeout; }
-        public void setReadTimeout(Duration readTimeout) { this.readTimeout = readTimeout; }
-        public Duration getMinRequestInterval() { return minRequestInterval; }
-        public void setMinRequestInterval(Duration minRequestInterval) { this.minRequestInterval = minRequestInterval; }
     }
+
+    /**
+     * OpenAI 接口配置。
+     */
+    @Data
     public static class OpenAi {
+        /**
+         * OpenAI API 根地址。
+         */
         private String baseUrl;
+        /**
+         * OpenAI API Key。
+         */
         private String apiKey;
+        /**
+         * 分析使用的模型名称。
+         */
         private String model;
+        /**
+         * 单次输入最大字符数。
+         */
         private int maxInputChars = 60000;
-        public String getBaseUrl() { return baseUrl; }
-        public void setBaseUrl(String baseUrl) { this.baseUrl = baseUrl; }
-        public String getApiKey() { return apiKey; }
-        public void setApiKey(String apiKey) { this.apiKey = apiKey; }
-        public String getModel() { return model; }
-        public void setModel(String model) { this.model = model; }
-        public int getMaxInputChars() { return maxInputChars; }
-        public void setMaxInputChars(int maxInputChars) { this.maxInputChars = maxInputChars; }
     }
+
+    /**
+     * Telegram 通知配置。
+     */
+    @Data
     public static class Telegram {
+        /**
+         * 是否启用 Telegram 通知。
+         */
         private boolean enabled;
+        /**
+         * Telegram Bot Token。
+         */
         private String botToken;
+        /**
+         * Telegram Chat ID。
+         */
         private String chatId;
-        public boolean isEnabled() { return enabled; }
-        public void setEnabled(boolean enabled) { this.enabled = enabled; }
-        public String getBotToken() { return botToken; }
-        public void setBotToken(String botToken) { this.botToken = botToken; }
-        public String getChatId() { return chatId; }
-        public void setChatId(String chatId) { this.chatId = chatId; }
     }
 }
