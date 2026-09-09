@@ -25,20 +25,28 @@ import java.util.List;
 @Service
 @Slf4j
 public class FilingProcessingService {
+
     @Resource
-    private FilingRepository filings;
+    private FilingRepository filingRepository;
+
     @Resource
-    private FilingDocumentRepository documents;
+    private FilingDocumentRepository documentRepository;
+
     @Resource
     private SecFilingClient secClient;
+
     @Resource
     private FilingDocumentSelector selector;
+
     @Resource
     private FilingParser parser;
+
     @Resource
     private ApplicationEventPublisher events;
+
     @Resource
     private PlatformTransactionManager transactionManager;
+
     private TransactionTemplate transactions;
 
     /**
@@ -55,15 +63,16 @@ public class FilingProcessingService {
      * @param filingId Filing 主键
      */
     public void download(Long filingId) {
-        FilingPO filing = filings.findOneById(filingId).orElseThrow();
+        FilingPO filing = filingRepository.findOneById(filingId).orElseThrow();
         transition(filingId, FilingStatus.DOWNLOADING);
         List<SecFilingDocumentDTO> downloaded = secClient.downloadDocuments(filing);
         transactions.executeWithoutResult(status -> {
+            // TODO：改为批量插入
             for (SecFilingDocumentDTO item : downloaded) {
-                documents.insert(new FilingDocumentPO(filing, item.getType(), item.getFilename(), item.getDescription(),
+                documentRepository.insert(new FilingDocumentPO(filing, item.getType(), item.getFilename(), item.getDescription(),
                         item.getUrl(), item.getContent()));
             }
-            filings.updateStatus(filingId, FilingStatus.DOWNLOADED, null);
+            filingRepository.updateStatus(filingId, FilingStatus.DOWNLOADED, null);
             events.publishEvent(new FilingDownloadedEvent(filingId));
         });
         log.info("Filing downloaded: {} accession={} documents={}", filing.getCompany().getTicker(), filing.getAccessionNumber(), downloaded.size());
@@ -76,8 +85,8 @@ public class FilingProcessingService {
      */
     public void parse(Long filingId) {
         transition(filingId, FilingStatus.PARSING);
-        FilingPO filing = filings.findById(filingId).orElseThrow();
-        List<FilingDocumentPO> all = documents.findAllByFilingIdOrderById(filingId);
+        FilingPO filing = filingRepository.findById(filingId).orElseThrow();
+        List<FilingDocumentPO> all = documentRepository.findAllByFilingIdOrderById(filingId);
         List<FilingDocumentPO> selected = selector.select(all, filing.getFormType());
         if (CollectionUtils.isEmpty(selected)) {
             throw new IllegalArgumentException("No relevant earnings document found");
@@ -86,11 +95,11 @@ public class FilingProcessingService {
             for (FilingDocumentPO document : selected) {
                 String clean = parser.parse(document.getRawContent());
                 document.parsed(clean, true);
-                documents.updateParsed(document);
+                documentRepository.updateParsed(document);
                 log.info("Earnings document selected: type={} name={}", document.getDocumentType(), document.getDocumentName());
                 log.info("Filing parsed, chars={}", clean.length());
             }
-            filings.updateStatus(filingId, FilingStatus.PARSED, null);
+            filingRepository.updateStatus(filingId, FilingStatus.PARSED, null);
             events.publishEvent(new FilingParsedEvent(filingId));
         });
     }
@@ -103,7 +112,7 @@ public class FilingProcessingService {
      */
     public void fail(Long filingId, Exception exception) {
         String message = exception.getMessage() == null ? "Unknown error" : exception.getMessage();
-        transactions.executeWithoutResult(status -> filings.updateStatus(filingId, FilingStatus.FAILED,
+        transactions.executeWithoutResult(status -> filingRepository.updateStatus(filingId, FilingStatus.FAILED,
                 message.substring(0, Math.min(2000, message.length()))));
         log.error("Filing processing failed: filingId={} error={}", filingId, exception.getMessage(), exception);
     }
@@ -115,6 +124,6 @@ public class FilingProcessingService {
      * @param status 新状态
      */
     private void transition(Long filingId, FilingStatus status) {
-        transactions.executeWithoutResult(tx -> filings.updateStatus(filingId, status, null));
+        transactions.executeWithoutResult(tx -> filingRepository.updateStatus(filingId, status, null));
     }
 }

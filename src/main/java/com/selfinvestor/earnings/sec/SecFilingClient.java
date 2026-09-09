@@ -23,14 +23,20 @@ import java.util.regex.Pattern;
 
 @Component
 public class SecFilingClient {
+
     private static final Pattern DOCUMENT = Pattern.compile("(?is)<DOCUMENT>(.*?)</DOCUMENT>");
+
     private static final Pattern TEXT = Pattern.compile("(?is)<TEXT>(.*?)</TEXT>");
+
     @Resource
     private WebClient.Builder webClientBuilder;
+
     @Resource
     private EarningsProperties properties;
+
     @Resource
     private SecRateLimiter rateLimiter;
+
     private WebClient client;
 
     /**

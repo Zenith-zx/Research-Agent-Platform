@@ -10,8 +10,10 @@ import org.springframework.transaction.event.TransactionalEventListener;
 
 @Component
 public class FilingPipelineListener {
+
     @Resource
-    private FilingProcessingService processing;
+    private FilingProcessingService filingProcessingService;
+
     @Resource
     private AiAnalysisService analysis;
 
@@ -24,9 +26,9 @@ public class FilingPipelineListener {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onDetected(FilingDetectedEvent event) {
         try {
-            processing.download(event.getFilingId());
+            filingProcessingService.download(event.getFilingId());
         } catch (Exception exception) {
-            processing.fail(event.getFilingId(), exception);
+            filingProcessingService.fail(event.getFilingId(), exception);
         }
     }
 
@@ -39,9 +41,9 @@ public class FilingPipelineListener {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onDownloaded(FilingDownloadedEvent event) {
         try {
-            processing.parse(event.getFilingId());
+            filingProcessingService.parse(event.getFilingId());
         } catch (Exception exception) {
-            processing.fail(event.getFilingId(), exception);
+            filingProcessingService.fail(event.getFilingId(), exception);
         }
     }
 
@@ -56,7 +58,7 @@ public class FilingPipelineListener {
         try {
             analysis.analyze(event.getFilingId());
         } catch (Exception exception) {
-            processing.fail(event.getFilingId(), exception);
+            filingProcessingService.fail(event.getFilingId(), exception);
         }
     }
 }

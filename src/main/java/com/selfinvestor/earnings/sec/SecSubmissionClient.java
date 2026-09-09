@@ -11,6 +11,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.netty.http.client.HttpClient;
 import reactor.util.retry.Retry;
 
@@ -21,13 +22,18 @@ import java.util.List;
 
 @Component
 public class SecSubmissionClient implements SecClient {
+
     private static final ZoneId SEC_ZONE = ZoneId.of("America/New_York");
+
     @Resource
     private WebClient.Builder webClientBuilder;
+
     @Resource
     private EarningsProperties properties;
+
     @Resource
     private SecRateLimiter rateLimiter;
+
     private WebClient client;
 
     /**
@@ -125,7 +131,7 @@ public class SecSubmissionClient implements SecClient {
      * @return 是否允许重试
      */
     private boolean isRetryable(Throwable error) {
-        if (!(error instanceof org.springframework.web.reactive.function.client.WebClientResponseException response)) {
+        if (!(error instanceof WebClientResponseException response)) {
             return true;
         }
         return response.getStatusCode().value() == 429 || response.getStatusCode().is5xxServerError();

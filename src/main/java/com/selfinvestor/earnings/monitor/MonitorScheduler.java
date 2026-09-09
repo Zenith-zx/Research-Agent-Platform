@@ -12,8 +12,10 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @ConditionalOnProperty(prefix = "earnings.monitor", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class MonitorScheduler {
+
     @Resource
     private CompanyService companies;
+
     @Resource
     private FilingMonitor monitor;
 

@@ -11,7 +11,9 @@ import java.util.concurrent.locks.LockSupport;
 public class SecRateLimiter {
     @Resource
     private EarningsProperties properties;
+
     private long intervalNanos;
+
     private long nextRequestNanos;
 
     /**
