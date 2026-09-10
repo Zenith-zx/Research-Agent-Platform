@@ -20,3 +20,7 @@ earnings:
     max-input-chars: 60000
   telegram:
     enabled: false
+market-stress:
+  enabled: false
+  scheduler:
+    enabled: false

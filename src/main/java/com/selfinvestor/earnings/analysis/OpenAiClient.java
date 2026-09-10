@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.selfinvestor.earnings.analysis.dto.FinancialAnalysisDTO;
+import com.selfinvestor.earnings.marketstress.dto.MarketStressAnalysisDTO;
 import com.selfinvestor.earnings.config.EarningsProperties;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
@@ -39,6 +40,10 @@ public class OpenAiClient {
 
     private JsonNode schema;
 
+    private String marketStressSystemPrompt;
+
+    private JsonNode marketStressSchema;
+
     /**
      * 初始化 OpenAI 客户端、系统提示词和 JSON Schema。
      */
@@ -48,8 +53,10 @@ public class OpenAiClient {
         systemPrompt = readResource("prompts/financial-analysis-system.txt");
         try {
             schema = mapper.readTree(readResource("prompts/financial-analysis-schema.json"));
+            marketStressSystemPrompt = readResource("prompts/market-stress-system-prompt.txt");
+            marketStressSchema = mapper.readTree(readResource("prompts/market-stress-analysis-schema.json"));
         } catch (IOException exception) {
-            throw new IllegalStateException("Invalid financial analysis schema", exception);
+            throw new IllegalStateException("Invalid OpenAI structured output schema", exception);
         }
     }
 
@@ -60,34 +67,66 @@ public class OpenAiClient {
      * @return 结构化分析结果
      */
     public FinancialAnalysisDTO analyze(String input) {
+        try {
+            FinancialAnalysisDTO analysis = analyzeStructured(input, systemPrompt, schema, "financial_analysis", FinancialAnalysisDTO.class);
+            if (analysis.isConsensusComparisonAvailable()) {
+                throw new IllegalArgumentException("Consensus comparison is unavailable in this MVP");
+            }
+            return analysis;
+        } catch (IllegalArgumentException exception) {
+            throw exception;
+        } catch (RuntimeException exception) {
+            throw new IllegalArgumentException("OpenAI returned invalid structured analysis", exception);
+        }
+    }
+
+    /**
+     * 调用同一个 Responses API 客户端完成市场压力结构化分析。
+     *
+     * @param input 市场快照和新闻上下文
+     * @return 市场压力分析
+     */
+    public MarketStressAnalysisDTO analyzeMarketStress(String input) {
+        return analyzeStructured(input, marketStressSystemPrompt, marketStressSchema,
+                "market_stress_analysis", MarketStressAnalysisDTO.class);
+    }
+
+    /**
+     * 使用严格 JSON Schema 调用 Responses API 并反序列化。
+     *
+     * @param input 用户输入
+     * @param instructions 系统提示词
+     * @param outputSchema JSON Schema
+     * @param schemaName Schema 名称
+     * @param resultType 结果类型
+     * @param <T> 结果泛型
+     * @return 结构化结果
+     */
+    private <T> T analyzeStructured(String input, String instructions, JsonNode outputSchema,
+                                    String schemaName, Class<T> resultType) {
         String apiKey = properties.getOpenai().getApiKey();
         if (apiKey == null || apiKey.isBlank()) {
             throw new IllegalStateException("OPENAI_API_KEY is not configured");
         }
         ObjectNode request = mapper.createObjectNode();
         request.put("model", properties.getOpenai().getModel());
-        request.put("instructions", systemPrompt);
+        request.put("instructions", instructions);
         request.put("input", input);
         ObjectNode format = request.putObject("text").putObject("format");
         format.put("type", "json_schema");
-        format.put("name", "financial_analysis");
+        format.put("name", schemaName);
         format.put("strict", true);
-        format.set("schema", schema);
+        format.set("schema", outputSchema);
         JsonNode response = client.post().uri("/v1/responses")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey)
                 .contentType(MediaType.APPLICATION_JSON).bodyValue(request)
                 .retrieve().bodyToMono(JsonNode.class)
                 .retryWhen(Retry.backoff(3, Duration.ofSeconds(1)).maxBackoff(Duration.ofSeconds(8)).filter(this::isRetryable))
                 .block();
-        String output = extractOutputText(response);
         try {
-            FinancialAnalysisDTO analysis = mapper.readValue(output, FinancialAnalysisDTO.class);
-            if (analysis.isConsensusComparisonAvailable()) {
-                throw new IllegalArgumentException("Consensus comparison is unavailable in this MVP");
-            }
-            return analysis;
+            return mapper.readValue(extractOutputText(response), resultType);
         } catch (IOException exception) {
-            throw new IllegalArgumentException("OpenAI returned invalid structured analysis", exception);
+            throw new IllegalArgumentException("OpenAI returned invalid " + schemaName + " output", exception);
         }
     }
 

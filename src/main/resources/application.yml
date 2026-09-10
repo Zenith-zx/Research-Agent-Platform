@@ -7,6 +7,17 @@ spring:
     password: ${DB_PASSWORD:earnings}
   flyway:
     enabled: true
+  mail:
+    host: ${MAIL_HOST:}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${MAIL_SMTP_AUTH:true}
+          starttls:
+            enable: ${MAIL_STARTTLS_ENABLE:true}
 
 mybatis:
   mapper-locations: classpath*:mapper/*.xml
@@ -40,3 +51,31 @@ earnings:
 logging:
   level:
     com.selfinvestor.earnings: INFO
+
+market-stress:
+  enabled: ${MARKET_STRESS_ENABLED:false}
+  symbols: ${MARKET_STRESS_SYMBOLS:QQQ}
+  rsi-period: ${MARKET_STRESS_RSI_PERIOD:6}
+  rsi-trigger: ${MARKET_STRESS_RSI_TRIGGER:30}
+  analysis-cooldown-hours: ${MARKET_STRESS_COOLDOWN_HOURS:12}
+  scheduler:
+    enabled: ${MARKET_STRESS_SCHEDULER_ENABLED:true}
+    interval-minutes: ${MARKET_STRESS_INTERVAL_MINUTES:30}
+    market-hours-only: ${MARKET_STRESS_MARKET_HOURS_ONLY:true}
+  provider:
+    base-url: ${ALPHA_VANTAGE_BASE_URL:https://www.alphavantage.co}
+    api-key: ${ALPHA_VANTAGE_API_KEY:}
+    connect-timeout: 5s
+    read-timeout: 30s
+    news-lookback-hours: ${MARKET_STRESS_NEWS_LOOKBACK_HOURS:72}
+    max-news-articles: ${MARKET_STRESS_MAX_NEWS_ARTICLES:30}
+  scoring:
+    technical-oversold-weight: ${MARKET_STRESS_WEIGHT_TECHNICAL:20}
+    event-reversibility-weight: ${MARKET_STRESS_WEIGHT_REVERSIBILITY:20}
+    fundamental-damage-weight: ${MARKET_STRESS_WEIGHT_FUNDAMENTAL:15}
+    financial-stress-weight: ${MARKET_STRESS_WEIGHT_FINANCIAL_STRESS:15}
+    bad-news-pricing-weight: ${MARKET_STRESS_WEIGHT_PRICING:20}
+    seller-exhaustion-weight: ${MARKET_STRESS_WEIGHT_EXHAUSTION:10}
+  email:
+    enabled: ${MARKET_STRESS_EMAIL_ENABLED:false}
+    recipients: ${MARKET_STRESS_EMAIL_RECIPIENTS:}

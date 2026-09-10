@@ -39,4 +39,20 @@ public class AsyncConfig {
         executor.initialize();
         return executor;
     }
+
+    /**
+     * 创建市场压力事件处理线程池。
+     *
+     * @return 市场压力线程池
+     */
+    @Bean(name = "marketStressExecutor")
+    public Executor marketStressExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(2);
+        executor.setMaxPoolSize(4);
+        executor.setQueueCapacity(50);
+        executor.setThreadNamePrefix("market-stress-");
+        executor.initialize();
+        return executor;
+    }
 }

@@ -1,0 +1,41 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["symbol", "analysisTimestamp", "marketRegime", "primaryDrivers", "eventStage", "reversibility", "fundamentalDamage", "financialStress", "eventPricing", "secondOrderEffectsPricing", "negativeNewsSensitivity", "sellerExhaustion", "technicalCondition", "technicalScore", "meanReversionScore", "action", "marketIsTrading", "reasoningSummary", "confirmationSignals", "invalidationSignals", "keyRisks", "confidence"],
+  "properties": {
+    "symbol": {"type": "string"},
+    "analysisTimestamp": {"type": "string", "description": "UTC ISO-8601 timestamp"},
+    "marketRegime": {"type": "string", "enum": ["RISK_ON", "RISK_OFF", "VOLATILE", "CRISIS", "TRANSITION", "UNKNOWN"]},
+    "primaryDrivers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "importance", "description"],
+        "properties": {
+          "type": {"type": "string", "enum": ["LIQUIDITY_SHOCK", "POLICY_SHOCK", "GEOPOLITICAL_SHOCK", "GROWTH_SHOCK", "INFLATION_SHOCK", "CREDIT_SHOCK", "EARNINGS_SHOCK", "VALUATION_CORRECTION", "SYSTEMIC_FINANCIAL_STRESS", "UNKNOWN"]},
+          "importance": {"type": "string", "enum": ["LOW", "MEDIUM", "HIGH"]},
+          "description": {"type": ["string", "null"]}
+        }
+      }
+    },
+    "eventStage": {"type": "string", "enum": ["RISK_EMERGING", "EXPECTATION_BUILDING", "EVENT_MATERIALIZED", "SECOND_ORDER_EFFECTS", "STABILIZING", "RESOLVING", "UNKNOWN"]},
+    "reversibility": {"type": "string", "enum": ["HIGH", "MEDIUM", "LOW", "UNKNOWN"]},
+    "fundamentalDamage": {"type": "string", "enum": ["NONE", "LIMITED", "MODERATE", "SEVERE", "UNKNOWN"]},
+    "financialStress": {"type": "string", "enum": ["LOW", "MODERATE", "HIGH", "SYSTEMIC", "UNKNOWN"]},
+    "eventPricing": {"type": "string", "enum": ["NOT_PRICED", "PARTIALLY_PRICED", "MOSTLY_PRICED", "HIGH_DEGREE_OF_PRICING", "UNKNOWN"]},
+    "secondOrderEffectsPricing": {"type": "string", "enum": ["NOT_PRICED", "PARTIALLY_PRICED", "MOSTLY_PRICED", "HIGH_DEGREE_OF_PRICING", "UNKNOWN"]},
+    "negativeNewsSensitivity": {"type": "string", "enum": ["INCREASING", "STABLE", "DECLINING", "UNKNOWN"]},
+    "sellerExhaustion": {"type": "string", "enum": ["NONE", "WEAK", "MODERATE", "STRONG", "UNKNOWN"]},
+    "technicalCondition": {"type": "string", "enum": ["NORMAL", "OVERSOLD", "EXTREME_OVERSOLD", "UNKNOWN"]},
+    "technicalScore": {"type": "integer", "minimum": 0, "maximum": 100},
+    "meanReversionScore": {"type": "integer", "minimum": 0, "maximum": 100},
+    "action": {"type": "string", "enum": ["STRONG_MEAN_REVERSION_SETUP", "SCALE_IN", "WAIT_FOR_CONFIRMATION", "HIGH_RISK", "AVOID_BUYING_THE_DIP"]},
+    "marketIsTrading": {"type": ["string", "null"]},
+    "reasoningSummary": {"type": ["string", "null"]},
+    "confirmationSignals": {"type": "array", "items": {"type": "string"}},
+    "invalidationSignals": {"type": "array", "items": {"type": "string"}},
+    "keyRisks": {"type": "array", "items": {"type": "string"}},
+    "confidence": {"type": ["number", "null"], "minimum": 0, "maximum": 1}
+  }
+}

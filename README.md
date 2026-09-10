@@ -1,6 +1,6 @@
 # self-investor：美股财报监听与 AI 分析 MVP
 
-这是一个 Java 17 / Spring Boot 3 / MyBatis 的个人投资研究后端。它定时检查关注公司的 SEC EDGAR filings，识别财报相关的 `8-K`、`10-Q`、`10-K`，选择最有价值的 Earnings Release / `EX-99.1`，清洗内容，调用 OpenAI Structured Outputs 生成结构化基本面分析，持久化到 MySQL，并通过 Telegram 通知。
+这是一个 Java 17 / Spring Boot 3 / MyBatis 的个人投资研究后端。它既能监听 SEC 财报并生成基本面分析，也能在 QQQ 短期超卖时获取跨资产数据和最近市场新闻，生成 Market Stress / Mean Reversion 研究信号。结果使用 OpenAI Structured Outputs、MySQL append-only 历史记录，并支持 Telegram 与邮件通知。
 
 本项目不包含自动交易、复杂前端、市场一致预期或估值功能。
 
@@ -19,6 +19,19 @@ MonitorScheduler
                  -> OpenAI Responses API + strict JSON Schema
                  -> AiAnalysisCompletedEvent
                       -> Telegram NotificationService
+
+MarketStressScheduler（America/New_York 交易时段）
+  -> Alpha Vantage QQQ 日线 + 最新报价
+  -> Java Wilder RSI + 配置阈值
+  -> 数据库 cooldown
+  -> OversoldDetectedEvent
+       -> 跨资产快照 + 72 小时新闻
+       -> MarketContextReadyEvent
+            -> OpenAI strict JSON Schema 分类
+            -> Java Mean Reversion Score + Action 风险护栏
+            -> MARKET_STRESS_ANALYSIS append-only 保存
+            -> MarketStressAnalysisCompletedEvent
+                 -> Email NotificationService
 ```
 
 主要 package：
@@ -28,11 +41,14 @@ MonitorScheduler
 - `sec`：SEC submissions 与 filing 下载客户端
 - `filing`：实体、MyBatis Mapper 接口、去重、附件选择、解析、分块与恢复
 - `analysis`：OpenAI 客户端、MyBatis Mapper 接口、Structured Output DTO、分析存储和查询
-- `notification`：通知扩展接口与 Telegram 实现
+- `marketstress`：行情/新闻 Provider 抽象、市场 DTO、历史分析 PO 与重触发策略
+- `service`：财报与市场压力业务服务、Telegram 和 Email 通知实现
+- `repository`：全部 MyBatis Mapper 接口
+- `notification`：分析完成后的通知事件分发
 - `event`：轻量级 Spring ApplicationEvent 流水线
 - `config`：类型安全配置与线程池
 
-数据库由 `src/main/resources/db/migration/V1__initial_schema.sql` 创建，表名统一为大写。业务 SQL 全部位于 `src/main/resources/mapper/*.xml`，Java Mapper 接口不包含注解 SQL。`FILING.accession_number` 和 `AI_ANALYSIS.filing_id` 均有唯一约束。应用重启后只恢复未完成流水线，`COMPLETED` filing 不会再次分析。
+数据库由 `V1__initial_schema.sql` 创建财报表，由 `V2__market_stress_analysis.sql` 创建市场压力历史表，表名统一为大写。业务 SQL 全部位于 `src/main/resources/mapper/*.xml`。`MARKET_STRESS_ANALYSIS` 每次触发新增一行，不覆盖历史记录。
 
 ## 2. 环境要求
 
@@ -40,6 +56,7 @@ MonitorScheduler
 - Docker / Docker Compose（推荐用于本地 MySQL）
 - 可访问 SEC、OpenAI 和 Telegram API 的网络
 - OpenAI API Key
+- 启用 Market Stress 时需要 Alpha Vantage API Key
 - 有效且包含联系方式的 SEC User-Agent，例如 `self-investor/0.1 you@example.com`
 
 不要求本机安装 Maven；仓库包含 Maven Wrapper。
@@ -88,7 +105,45 @@ set +a
 | `TELEGRAM_CHAT_ID` | 空 | 接收消息的 chat ID |
 | `EARNINGS_SIMULATION_ENABLED` | `false` | 是否打开仅供本地使用的模拟接口 |
 
-API Key、数据库密码和 Telegram token 均只从环境变量读取，日志不会输出这些值。
+Market Stress 配置：
+
+| 环境变量 | 默认值 | 说明 |
+|---|---:|---|
+| `MARKET_STRESS_ENABLED` | `false` | 总开关；默认关闭以免影响原财报功能 |
+| `MARKET_STRESS_SYMBOLS` | `QQQ` | 扫描标的，未来可用逗号扩展 |
+| `MARKET_STRESS_RSI_PERIOD` | `6` | 超卖触发 RSI 周期 |
+| `MARKET_STRESS_RSI_TRIGGER` | `30` | 严格低于此值才触发 |
+| `MARKET_STRESS_COOLDOWN_HOURS` | `12` | 同标的 AI 分析冷却时间 |
+| `MARKET_STRESS_INTERVAL_MINUTES` | `30` | 扫描间隔 |
+| `MARKET_STRESS_MARKET_HOURS_ONLY` | `true` | 只在纽约常规交易时段扫描 |
+| `ALPHA_VANTAGE_API_KEY` | 空 | 行情、宏观数据和新闻 API Key |
+| `MARKET_STRESS_NEWS_LOOKBACK_HOURS` | `72` | 新闻回溯窗口 |
+| `MARKET_STRESS_MAX_NEWS_ARTICLES` | `30` | 最多发送给 GPT 的新闻数量 |
+
+邮件配置：
+
+| 环境变量 | 默认值 | 说明 |
+|---|---:|---|
+| `MARKET_STRESS_EMAIL_ENABLED` | `false` | 是否创建邮件通知渠道 |
+| `MARKET_STRESS_EMAIL_RECIPIENTS` | 空 | 逗号分隔的收件人 |
+| `MAIL_HOST` / `MAIL_PORT` | 空 / `587` | SMTP 服务地址和端口 |
+| `MAIL_USERNAME` / `MAIL_PASSWORD` | 空 | SMTP 凭证 |
+| `MAIL_SMTP_AUTH` | `true` | 是否启用 SMTP 认证 |
+| `MAIL_STARTTLS_ENABLE` | `true` | 是否启用 STARTTLS |
+
+API Key、SMTP/数据库密码和 Telegram token 均只从环境变量读取，日志不会输出这些值。
+
+### 启用 Market Stress
+
+最小配置如下；先保持邮件关闭验证行情和数据库，再配置 SMTP：
+
+```bash
+export MARKET_STRESS_ENABLED=true
+export ALPHA_VANTAGE_API_KEY='your-alpha-vantage-key'
+export OPENAI_API_KEY='your-openai-key'
+```
+
+Scheduler 每 30 分钟检查一次，但只在 `America/New_York` 的正常交易日和常规时段执行。内部分析时间均保存为 UTC。RSI 由 Java 使用 Wilder 方法计算，GPT 只负责事件分类，不负责计算 RSI 或最终分数。
 
 ## 5. 添加关注公司
 
@@ -149,6 +204,13 @@ java -jar target/earnings-monitor-0.1.0-SNAPSHOT.jar
 - `AiAnalysisServiceTest`：mock OpenAI 客户端验证输入与 DTO
 - `OpenAiClientTest`：mock HTTP server 验证 Responses API strict JSON Schema 请求和反序列化
 - `SecMonitorTest`：mock SEC 返回，验证仅处理相关 filing
+- `TechnicalIndicatorServiceTest`：已知序列验证 Wilder RSI6 / RSI14
+- `OversoldTriggerTest`：验证可配置阈值
+- `CooldownTest`：验证同标的冷却期内不重复分析
+- `MeanReversionScoreTest`：验证配置权重和系统性风险护栏
+- `MarketStressAiServiceTest`：mock 共用 OpenAI 客户端
+- `MarketSnapshotBuilderTest`：验证部分跨资产数据缺失时降级
+- `SchedulerTest`：验证非交易时间和纽约 DST
 
 ## 8. 模拟新 Filing
 
@@ -185,6 +247,9 @@ FROM FILING ORDER BY id DESC;
 
 SELECT filing_id, model, summary, analysis_json, created_at
 FROM AI_ANALYSIS ORDER BY id DESC;
+
+SELECT id, symbol, analysis_time, rsi6, mean_reversion_score, action, status, error_message
+FROM MARKET_STRESS_ANALYSIS ORDER BY id DESC;
 ```
 
 原始附件和清洗内容保存在 `FILING_DOCUMENT.raw_content` 与 `clean_content`。AI 输出中 `consensusComparisonAvailable` 被强制为 `false`，因为本版本没有接入分析师一致预期，不能判断 Beat/Miss。
@@ -199,6 +264,10 @@ FROM AI_ANALYSIS ORDER BY id DESC;
 - Telegram 失败会重试并记录日志，但当前没有独立通知 outbox 表。
 - `FAILED` 不会无限自动重跑；排查 `error_message` 后需人工修复或增加运维重试入口。
 - 单实例运行最符合 MVP 定位。数据库唯一约束可保证多实例发现时不重复入库，但没有分布式任务租约。
+- Market Stress 第一版使用 Alpha Vantage。部分指数、黄金或宏观端点可能取决于供应商订阅等级；获取不到时字段保存为 `null`，不会用 ETF 代理伪装真实指数。DXY 在该 Provider 中没有直接序列，因此当前明确返回 `null`。
+- Alpha Vantage compact 日线通常不足 200 个交易日，无法计算 MA200 时该字段为 `null`；未来更换支持长历史的 `MarketDataProvider` 即可补齐。
+- 新闻相关性第一版采用供应商 `financial_markets` 过滤加本地关键词分类，不包含复杂爬虫、新闻反应函数或自动重大新闻重触发。
+- 该模块只生成 AI Investment Research Signal，不会连接 IBKR 或执行交易。
 
 未来可在现有 `SecClient`、`NotificationService` 和事件边界后加入 IR 监听、Consensus、Earnings Call、估值和券商接口，而不需要改写核心 filing 流水线。
 

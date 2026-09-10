@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.selfinvestor.earnings.repository.MarketStressAnalysisRepository">
+    <resultMap id="MarketStressMap" type="com.selfinvestor.earnings.marketstress.MarketStressAnalysisPO">
+        <id property="id" column="id"/>
+        <result property="symbol" column="symbol"/>
+        <result property="analysisTime" column="analysis_time"/>
+        <result property="triggerType" column="trigger_type"/>
+        <result property="rsi6" column="rsi6"/>
+        <result property="rsi14" column="rsi14"/>
+        <result property="dailyReturn" column="daily_return"/>
+        <result property="fiveDayReturn" column="five_day_return"/>
+        <result property="vix" column="vix"/>
+        <result property="us10y" column="us10y"/>
+        <result property="brent" column="brent"/>
+        <result property="hygReturn" column="hyg_return"/>
+        <result property="eventStage" column="event_stage"/>
+        <result property="reversibility" column="reversibility"/>
+        <result property="fundamentalDamage" column="fundamental_damage"/>
+        <result property="financialStress" column="financial_stress"/>
+        <result property="eventPricing" column="event_pricing"/>
+        <result property="secondOrderPricing" column="second_order_pricing"/>
+        <result property="sellerExhaustion" column="seller_exhaustion"/>
+        <result property="technicalScore" column="technical_score"/>
+        <result property="meanReversionScore" column="mean_reversion_score"/>
+        <result property="action" column="action"/>
+        <result property="confidence" column="confidence"/>
+        <result property="marketIsTrading" column="market_is_trading"/>
+        <result property="reasoningSummary" column="reasoning_summary"/>
+        <result property="marketSnapshotJson" column="market_snapshot_json"/>
+        <result property="newsJson" column="news_json"/>
+        <result property="analysisJson" column="analysis_json"/>
+        <result property="status" column="status"/>
+        <result property="errorMessage" column="error_message"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <sql id="Columns">id, symbol, analysis_time, trigger_type, rsi6, rsi14, daily_return, five_day_return,
+        vix, us10y, brent, hyg_return, event_stage, reversibility, fundamental_damage, financial_stress,
+        event_pricing, second_order_pricing, seller_exhaustion, technical_score, mean_reversion_score,
+        action, confidence, market_is_trading, reasoning_summary, market_snapshot_json, news_json,
+        analysis_json, status, error_message, created_at, updated_at</sql>
+
+    <insert id="insert" parameterType="com.selfinvestor.earnings.marketstress.MarketStressAnalysisPO"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+        INSERT INTO MARKET_STRESS_ANALYSIS
+        (symbol, analysis_time, trigger_type, rsi6, rsi14, daily_return, five_day_return, status, created_at, updated_at)
+        VALUES
+        (#{symbol}, #{analysisTime}, #{triggerType}, #{rsi6}, #{rsi14}, #{dailyReturn}, #{fiveDayReturn},
+         #{status}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    </insert>
+
+    <select id="findById" resultMap="MarketStressMap">
+        SELECT <include refid="Columns"/> FROM MARKET_STRESS_ANALYSIS WHERE id = #{id}
+    </select>
+
+    <select id="findLatestActiveAnalysisTime" resultType="java.time.Instant">
+        SELECT MAX(analysis_time) FROM MARKET_STRESS_ANALYSIS
+        WHERE UPPER(symbol) = UPPER(#{symbol}) AND status != 'FAILED'
+    </select>
+
+    <update id="updateContext" parameterType="com.selfinvestor.earnings.marketstress.MarketStressAnalysisPO">
+        UPDATE MARKET_STRESS_ANALYSIS SET
+            rsi6 = #{rsi6}, rsi14 = #{rsi14}, daily_return = #{dailyReturn}, five_day_return = #{fiveDayReturn},
+            vix = #{vix}, us10y = #{us10y}, brent = #{brent}, hyg_return = #{hygReturn},
+            market_snapshot_json = #{marketSnapshotJson}, news_json = #{newsJson}, status = 'CONTEXT_READY',
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = #{id}
+    </update>
+
+    <update id="markAnalyzing">
+        UPDATE MARKET_STRESS_ANALYSIS SET status = 'ANALYZING', updated_at = CURRENT_TIMESTAMP WHERE id = #{id}
+    </update>
+
+    <update id="updateCompleted" parameterType="com.selfinvestor.earnings.marketstress.MarketStressAnalysisPO">
+        UPDATE MARKET_STRESS_ANALYSIS SET
+            event_stage = #{eventStage}, reversibility = #{reversibility}, fundamental_damage = #{fundamentalDamage},
+            financial_stress = #{financialStress}, event_pricing = #{eventPricing},
+            second_order_pricing = #{secondOrderPricing}, seller_exhaustion = #{sellerExhaustion},
+            technical_score = #{technicalScore}, mean_reversion_score = #{meanReversionScore}, action = #{action},
+            confidence = #{confidence}, market_is_trading = #{marketIsTrading}, reasoning_summary = #{reasoningSummary},
+            analysis_json = #{analysisJson}, status = 'COMPLETED', error_message = NULL, updated_at = CURRENT_TIMESTAMP
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateFailed">
+        UPDATE MARKET_STRESS_ANALYSIS SET status = 'FAILED', error_message = #{errorMessage},
+            updated_at = CURRENT_TIMESTAMP WHERE id = #{id}
+    </update>
+</mapper>
