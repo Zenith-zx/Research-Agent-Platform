@@ -60,15 +60,24 @@ market-stress:
   analysis-cooldown-hours: ${MARKET_STRESS_COOLDOWN_HOURS:12}
   scheduler:
     enabled: ${MARKET_STRESS_SCHEDULER_ENABLED:true}
-    interval-minutes: ${MARKET_STRESS_INTERVAL_MINUTES:30}
+    interval-minutes: ${MARKET_STRESS_INTERVAL_MINUTES:60}
     market-hours-only: ${MARKET_STRESS_MARKET_HOURS_ONLY:true}
   provider:
+    market-data: ${MARKET_STRESS_MARKET_DATA_PROVIDER:ibkr}
     base-url: ${ALPHA_VANTAGE_BASE_URL:https://www.alphavantage.co}
     api-key: ${ALPHA_VANTAGE_API_KEY:}
     connect-timeout: 5s
     read-timeout: 30s
     news-lookback-hours: ${MARKET_STRESS_NEWS_LOOKBACK_HOURS:72}
     max-news-articles: ${MARKET_STRESS_MAX_NEWS_ARTICLES:30}
+    ibkr:
+      base-url: ${IBKR_CLIENT_PORTAL_BASE_URL:https://localhost:5000/v1/api}
+      connect-timeout: ${IBKR_CONNECT_TIMEOUT:5s}
+      read-timeout: ${IBKR_READ_TIMEOUT:30s}
+      verify-ssl: ${IBKR_VERIFY_SSL:false}
+      require-realtime: ${IBKR_REQUIRE_REALTIME:true}
+      snapshot-preflight-delay: ${IBKR_SNAPSHOT_PREFLIGHT_DELAY:500ms}
+      compete-session: ${IBKR_COMPETE_SESSION:false}
   scoring:
     technical-oversold-weight: ${MARKET_STRESS_WEIGHT_TECHNICAL:20}
     event-reversibility-weight: ${MARKET_STRESS_WEIGHT_REVERSIBILITY:20}

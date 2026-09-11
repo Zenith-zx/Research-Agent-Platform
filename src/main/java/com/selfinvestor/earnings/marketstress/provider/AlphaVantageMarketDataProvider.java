@@ -6,6 +6,7 @@ import com.selfinvestor.earnings.marketstress.dto.DailyBarDTO;
 import com.selfinvestor.earnings.marketstress.dto.MarketQuoteDTO;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import com.selfinvestor.earnings.enums.MarketMetricType;
 import com.selfinvestor.earnings.marketstress.dto.MarketMetricDTO;
@@ -27,6 +28,8 @@ import java.util.LinkedHashMap;
  */
 @Component
 @Slf4j
+@ConditionalOnProperty(prefix = "market-stress.provider", name = "market-data",
+        havingValue = "alpha-vantage", matchIfMissing = true)
 public class AlphaVantageMarketDataProvider implements MarketDataProvider {
     private static final String SOURCE = "Alpha Vantage";
     private static final ZoneId NEW_YORK = ZoneId.of("America/New_York");

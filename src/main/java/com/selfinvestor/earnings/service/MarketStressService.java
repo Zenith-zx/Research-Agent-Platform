@@ -27,12 +27,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * 市场压力检测、上下文和持久化编排服务。
@@ -40,30 +43,43 @@ import java.util.List;
 @Service
 @Slf4j
 public class MarketStressService {
+
     @Resource
     private MarketDataProvider marketDataProvider;
+
     @Resource
     private MarketNewsProvider marketNewsProvider;
+
     @Resource
     private MarketSnapshotBuilder snapshotBuilder;
+
     @Resource
     private OversoldTriggerService triggerService;
+
     @Resource
     private MarketStressCooldownService cooldownService;
+
     @Resource
     private MarketStressAiService aiService;
+
     @Resource
     private TechnicalIndicatorService technicalIndicatorService;
+
     @Resource
     private MarketStressAnalysisRepository repository;
+
     @Resource
     private MarketStressProperties properties;
+
     @Resource
     private ObjectMapper objectMapper;
+
     @Resource
     private ApplicationEventPublisher events;
+
     @Resource
     private PlatformTransactionManager transactionManager;
+
 
     private TransactionTemplate transactions;
 
@@ -85,8 +101,8 @@ public class MarketStressService {
         List<DailyBarDTO> bars = marketDataProvider.getDailyBars(symbol, 220);
         mergeLatestQuote(symbol, bars);
         SymbolSnapshotDTO technical = snapshotBuilder.buildTechnicalSnapshot(symbol, bars);
-        java.util.Optional<java.math.BigDecimal> triggerRsi = technicalIndicatorService.calculateRsi(
-                bars.stream().map(DailyBarDTO::getClose).collect(java.util.stream.Collectors.toList()),
+        Optional<BigDecimal> triggerRsi = technicalIndicatorService.calculateRsi(
+                bars.stream().map(DailyBarDTO::getClose).collect(Collectors.toList()),
                 properties.getRsiPeriod());
         log.info("{} RSI{}={}", symbol, properties.getRsiPeriod(), triggerRsi.orElse(null));
         if (!triggerService.shouldTrigger(triggerRsi)) {

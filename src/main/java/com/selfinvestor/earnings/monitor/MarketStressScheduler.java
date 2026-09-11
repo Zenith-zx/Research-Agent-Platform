@@ -28,7 +28,7 @@ public class MarketStressScheduler {
      * 按配置间隔扫描市场压力标的。
      */
     @Scheduled(initialDelayString = "${market-stress.scheduler.initial-delay-ms:15000}",
-            fixedDelayString = "#{${market-stress.scheduler.interval-minutes:30} * 60000}")
+            fixedDelayString = "#{${market-stress.scheduler.interval-minutes:60} * 60000}")
     public void scan() {
         if (properties.getScheduler().isMarketHoursOnly() && !marketSessionService.isRegularSessionNow()) {
             return;

@@ -21,7 +21,7 @@ MonitorScheduler
                       -> Telegram NotificationService
 
 MarketStressScheduler（America/New_York 交易时段）
-  -> Alpha Vantage QQQ 日线 + 最新报价
+  -> IBKR Client Portal Web API QQQ 日线缓存 + 每小时实时报价
   -> Java Wilder RSI + 配置阈值
   -> 数据库 cooldown
   -> OversoldDetectedEvent
@@ -56,7 +56,9 @@ MarketStressScheduler（America/New_York 交易时段）
 - Docker / Docker Compose（推荐用于本地 MySQL）
 - 可访问 SEC、OpenAI 和 Telegram API 的网络
 - OpenAI API Key
-- 启用 Market Stress 时需要 Alpha Vantage API Key
+- 启用 Market Stress 时需要已入金并开通行情 API 权限的 IBKR 账户
+- 本机运行并登录 IBKR Client Portal Gateway
+- 获取市场新闻时仍需要 Alpha Vantage API Key；未配置时新闻获取失败会降级为空列表
 - 有效且包含联系方式的 SEC User-Agent，例如 `self-investor/0.1 you@example.com`
 
 不要求本机安装 Maven；仓库包含 Maven Wrapper。
@@ -114,9 +116,14 @@ Market Stress 配置：
 | `MARKET_STRESS_RSI_PERIOD` | `6` | 超卖触发 RSI 周期 |
 | `MARKET_STRESS_RSI_TRIGGER` | `30` | 严格低于此值才触发 |
 | `MARKET_STRESS_COOLDOWN_HOURS` | `12` | 同标的 AI 分析冷却时间 |
-| `MARKET_STRESS_INTERVAL_MINUTES` | `30` | 扫描间隔 |
+| `MARKET_STRESS_INTERVAL_MINUTES` | `60` | 盘中扫描间隔 |
 | `MARKET_STRESS_MARKET_HOURS_ONLY` | `true` | 只在纽约常规交易时段扫描 |
-| `ALPHA_VANTAGE_API_KEY` | 空 | 行情、宏观数据和新闻 API Key |
+| `MARKET_STRESS_MARKET_DATA_PROVIDER` | `ibkr` | 行情实现，可切换为 `alpha-vantage` |
+| `IBKR_CLIENT_PORTAL_BASE_URL` | `https://localhost:5000/v1/api` | 本地 Client Portal Gateway 地址 |
+| `IBKR_VERIFY_SSL` | `false` | 本地 Gateway 使用自签名证书；仅允许对回环地址关闭校验 |
+| `IBKR_REQUIRE_REALTIME` | `true` | 拒绝延迟、冻结或未订阅行情 |
+| `IBKR_COMPETE_SESSION` | `false` | 不抢占同一用户名的其他 Brokerage Session |
+| `ALPHA_VANTAGE_API_KEY` | 空 | 当前仅用于最近市场新闻；也可切回 Alpha Vantage 行情 |
 | `MARKET_STRESS_NEWS_LOOKBACK_HOURS` | `72` | 新闻回溯窗口 |
 | `MARKET_STRESS_MAX_NEWS_ARTICLES` | `30` | 最多发送给 GPT 的新闻数量 |
 
@@ -135,15 +142,55 @@ API Key、SMTP/数据库密码和 Telegram token 均只从环境变量读取，�
 
 ### 启用 Market Stress
 
+#### 1. 启动 IBKR Client Portal Gateway
+
+从 [IBKR Web API 页面](https://www.interactivebrokers.com/campus/ibkr-api-page/webapi-doc/) 下载并解压 Client Portal Gateway。按照 IBKR 包内说明启动 Gateway，然后在浏览器打开 `https://localhost:5000` 完成交互式登录。行情接口必须存在已认证的 Brokerage Session；登录通常需要每天重新完成，并可能受 IBKR 每日维护影响。
+
+可以先检查会话：
+
+```bash
+curl -k -X POST https://localhost:5000/v1/api/iserver/auth/status
+```
+
+返回内容应包含：
+
+```json
+{
+  "authenticated": true,
+  "connected": true
+}
+```
+
+同一个 IBKR 用户名同时只能有一个 Brokerage Session。默认 `IBKR_COMPETE_SESSION=false`，程序不会主动踢掉已登录的 TWS 或手机交易会话。建议为 API 创建符合 IBKR规则的独立用户名，并为该用户名配置所需行情权限。
+
+#### 2. 启动项目
+
 最小配置如下；先保持邮件关闭验证行情和数据库，再配置 SMTP：
 
 ```bash
 export MARKET_STRESS_ENABLED=true
-export ALPHA_VANTAGE_API_KEY='your-alpha-vantage-key'
+export MARKET_STRESS_MARKET_DATA_PROVIDER=ibkr
+export IBKR_CLIENT_PORTAL_BASE_URL='https://localhost:5000/v1/api'
+export IBKR_REQUIRE_REALTIME=true
+export ALPHA_VANTAGE_API_KEY='your-alpha-vantage-key-for-news'
 export OPENAI_API_KEY='your-openai-key'
 ```
 
-Scheduler 每 30 分钟检查一次，但只在 `America/New_York` 的正常交易日和常规时段执行。内部分析时间均保存为 UTC。RSI 由 Java 使用 Wilder 方法计算，GPT 只负责事件分类，不负责计算 RSI 或最终分数。
+Scheduler 每 60 分钟检查一次，但只在 `America/New_York` 的正常交易日和常规时段执行。IBKR 历史日线按纽约日期缓存，每小时扫描只刷新触发标的最新价；跨资产行情和新闻只在 RSI 触发且通过 cooldown 后获取。内部分析时间均保存为 UTC。RSI 由 Java 使用 Wilder 方法计算，GPT 只负责事件分类，不负责计算 RSI 或最终分数。
+
+项目调用标准 `/iserver/marketdata/snapshot` top-of-book 接口并执行官方要求的首次预热请求，不调用收费的 `/md/regsnapshot` 监管快照接口。行情字段 `6509` 不以 `R` 开头时，本轮扫描会失败并记录日志，避免用 15～20 分钟延迟行情触发研究信号。每四分钟调用一次 `/tickle` 保持会话；该请求不是行情快照，也不会增加监管快照计数。
+
+如果 IBKR 自动搜索出的合约不符合账户地区或行情权限，可以在私有配置中指定 conid：
+
+```yaml
+market-stress:
+  provider:
+    ibkr:
+      conids:
+        QQQ: 你的QQQ_CONID
+        SPY: 你的SPY_CONID
+        VIX: 你的VIX_CONID
+```
 
 ## 5. 添加关注公司
 
@@ -264,10 +311,12 @@ FROM MARKET_STRESS_ANALYSIS ORDER BY id DESC;
 - Telegram 失败会重试并记录日志，但当前没有独立通知 outbox 表。
 - `FAILED` 不会无限自动重跑；排查 `error_message` 后需人工修复或增加运维重试入口。
 - 单实例运行最符合 MVP 定位。数据库唯一约束可保证多实例发现时不重复入库，但没有分布式任务租约。
-- Market Stress 第一版使用 Alpha Vantage。部分指数、黄金或宏观端点可能取决于供应商订阅等级；获取不到时字段保存为 `null`，不会用 ETF 代理伪装真实指数。DXY 在该 Provider 中没有直接序列，因此当前明确返回 `null`。
-- Alpha Vantage compact 日线通常不足 200 个交易日，无法计算 MA200 时该字段为 `null`；未来更换支持长历史的 `MarketDataProvider` 即可补齐。
+- Market Stress 默认使用 IBKR Client Portal Web API 获取股票和 ETF 行情，必须保持本地 Gateway 与 Brokerage Session 可用。会话在长期无请求时会失效，因此应用每四分钟发送一次官方 `/tickle` 保活；每日认证重置后仍可能需要人工登录。
+- IBKR Provider 第一版只对 VIX 提供直接指数查询。US2Y、US10Y、US30Y、DXY、WTI、Brent 和 Gold 没有被期货或 ETF 代理替代，当前明确保存为 `null`，后续应接 FRED、美国财政部或对应官方宏观数据源。
+- 免费 `US Real-Time Non-Consolidated Streaming Quotes` 不是完整 NBBO。系统会校验 IBKR `6509` 行情可用性为实时，但数据覆盖仍以账户实际交易所订阅为准。
+- 可通过 `MARKET_STRESS_MARKET_DATA_PROVIDER=alpha-vantage` 回退原行情实现。Alpha Vantage compact 日线可能不足 200 个交易日，无法计算 MA200 时该字段为 `null`。
 - 新闻相关性第一版采用供应商 `financial_markets` 过滤加本地关键词分类，不包含复杂爬虫、新闻反应函数或自动重大新闻重触发。
-- 该模块只生成 AI Investment Research Signal，不会连接 IBKR 或执行交易。
+- 该模块只读取 IBKR 行情并生成 AI Investment Research Signal，没有任何下单接口，也不会执行交易。
 
 未来可在现有 `SecClient`、`NotificationService` 和事件边界后加入 IR 监听、Consensus、Earnings Call、估值和券商接口，而不需要改写核心 filing 流水线。
 

@@ -7,7 +7,9 @@ import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 市场压力分析配置。
@@ -58,6 +60,10 @@ public class MarketStressProperties {
     @Data
     public static class Provider {
         /**
+         * 行情供应商，可选 alpha-vantage 或 ibkr。
+         */
+        private String marketData = "alpha-vantage";
+        /**
          * Alpha Vantage API 根地址。
          */
         private String baseUrl = "https://www.alphavantage.co";
@@ -81,6 +87,49 @@ public class MarketStressProperties {
          * 输入模型的最大新闻数量。
          */
         private int maxNewsArticles = 30;
+        /**
+         * IBKR Client Portal Web API 配置。
+         */
+        private final Ibkr ibkr = new Ibkr();
+    }
+
+    /**
+     * IBKR Client Portal Gateway 行情配置。
+     */
+    @Data
+    public static class Ibkr {
+        /**
+         * 本地 Client Portal Gateway API 根地址。
+         */
+        private String baseUrl = "https://localhost:5000/v1/api";
+        /**
+         * HTTP 连接超时。
+         */
+        private Duration connectTimeout = Duration.ofSeconds(5);
+        /**
+         * HTTP 读取超时。
+         */
+        private Duration readTimeout = Duration.ofSeconds(30);
+        /**
+         * 是否校验 Gateway TLS 证书。
+         */
+        private boolean verifySsl;
+        /**
+         * 是否拒绝延迟或未订阅行情。
+         */
+        private boolean requireRealtime = true;
+        /**
+         * 行情预热请求后等待时间。
+         */
+        private Duration snapshotPreflightDelay = Duration.ofMillis(500);
+        /**
+         * 是否允许初始化时抢占其他 IBKR Brokerage Session。
+         */
+        private boolean competeSession;
+        /**
+         * 合约代码到 IBKR conid 的可选固定映射。
+         */
+        private Map<String, Long> conids = new HashMap<>();
     }
 
     /**
@@ -95,7 +144,7 @@ public class MarketStressProperties {
         /**
          * 扫描间隔分钟数。
          */
-        private long intervalMinutes = 30;
+        private long intervalMinutes = 60;
         /**
          * 是否仅在美股常规交易时间扫描。
          */
