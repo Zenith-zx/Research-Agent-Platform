@@ -5,8 +5,8 @@ spring:
     import: optional:file:.env[.properties]
   datasource:
     url: ${DB_URL:jdbc:mysql://localhost:3306/earnings?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
-    username: ${DB_USERNAME:earnings}
-    password: ${DB_PASSWORD:earnings}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:}
   flyway:
     enabled: true
   mail:
