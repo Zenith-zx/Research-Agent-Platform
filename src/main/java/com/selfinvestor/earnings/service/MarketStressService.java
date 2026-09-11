@@ -66,6 +66,9 @@ public class MarketStressService {
     private TechnicalIndicatorService technicalIndicatorService;
 
     @Resource
+    private DailyMarketCloseService dailyMarketCloseService;
+
+    @Resource
     private MarketStressAnalysisRepository repository;
 
     @Resource
@@ -98,13 +101,20 @@ public class MarketStressService {
      */
     public void scan(String symbol) {
         log.info("Market scan started: {}", symbol);
+        MarketQuoteDTO quote = marketDataProvider.getQuote(symbol);
+        dailyMarketCloseService.recordPreviousClose(symbol, quote);
         List<DailyBarDTO> bars = marketDataProvider.getDailyBars(symbol, 220);
-        mergeLatestQuote(symbol, bars);
+        mergeLatestQuote(symbol, bars, quote);
         SymbolSnapshotDTO technical = snapshotBuilder.buildTechnicalSnapshot(symbol, bars);
         Optional<BigDecimal> triggerRsi = technicalIndicatorService.calculateRsi(
                 bars.stream().map(DailyBarDTO::getClose).collect(Collectors.toList()),
                 properties.getRsiPeriod());
         log.info("{} RSI{}={}", symbol, properties.getRsiPeriod(), triggerRsi.orElse(null));
+        if (triggerRsi.isEmpty()) {
+            log.info("Market scan is accumulating daily closes: symbol={} observations={} required={}",
+                    symbol, bars.size(), properties.getRsiPeriod() + 1);
+            return;
+        }
         if (!triggerService.shouldTrigger(triggerRsi)) {
             return;
         }
@@ -122,29 +132,30 @@ public class MarketStressService {
     }
 
     /**
-     * 将盘中最新报价合并到日线序列；报价失败时保留最近日线数据。
+     * 将盘中最新报价合并到已保存的正式收盘价序列。
      *
      * @param symbol 标的
      * @param bars 日线序列
+     * @param quote 最新报价
      */
-    private void mergeLatestQuote(String symbol, List<DailyBarDTO> bars) {
-        try {
-            MarketQuoteDTO quote = marketDataProvider.getQuote(symbol);
-            if (quote == null || quote.getPrice() == null || CollectionUtils.isEmpty(bars)) {
-                return;
-            }
-            DailyBarDTO latest = bars.get(bars.size() - 1);
-            LocalDate quoteDate = quote.getTimestamp().atZone(ZoneId.of("America/New_York")).toLocalDate();
-            if (latest.getDate().equals(quoteDate)) {
-                latest.setClose(quote.getPrice());
-                latest.setTimestamp(quote.getTimestamp());
-                latest.setSource(quote.getSource());
-            } else if (quoteDate.isAfter(latest.getDate())) {
-                bars.add(new DailyBarDTO(symbol, quoteDate, quote.getPrice(), quote.getPrice(), quote.getPrice(),
-                        quote.getPrice(), null, quote.getTimestamp(), quote.getSource()));
-            }
-        } catch (RuntimeException exception) {
-            log.warn("Latest quote unavailable, using last daily close: symbol={} reason={}", symbol, exception.getMessage());
+    private void mergeLatestQuote(String symbol, List<DailyBarDTO> bars, MarketQuoteDTO quote) {
+        if (quote == null || quote.getPrice() == null) {
+            return;
+        }
+        LocalDate quoteDate = quote.getTimestamp().atZone(ZoneId.of("America/New_York")).toLocalDate();
+        if (CollectionUtils.isEmpty(bars)) {
+            bars.add(new DailyBarDTO(symbol, quoteDate, quote.getPrice(), quote.getPrice(), quote.getPrice(),
+                    quote.getPrice(), null, quote.getTimestamp(), quote.getSource()));
+            return;
+        }
+        DailyBarDTO latest = bars.get(bars.size() - 1);
+        if (latest.getDate().equals(quoteDate)) {
+            latest.setClose(quote.getPrice());
+            latest.setTimestamp(quote.getTimestamp());
+            latest.setSource(quote.getSource());
+        } else if (quoteDate.isAfter(latest.getDate())) {
+            bars.add(new DailyBarDTO(symbol, quoteDate, quote.getPrice(), quote.getPrice(), quote.getPrice(),
+                    quote.getPrice(), null, quote.getTimestamp(), quote.getSource()));
         }
     }
 

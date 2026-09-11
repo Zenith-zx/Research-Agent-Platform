@@ -21,7 +21,9 @@ MonitorScheduler
                       -> Telegram NotificationService
 
 MarketStressScheduler（America/New_York 交易时段）
-  -> IBKR Client Portal Web API QQQ 日线缓存 + 每小时实时报价
+  -> Finnhub Quote API 每小时获取 QQQ 报价
+  -> 将上一交易日正式收盘价保存到 MARKET_DAILY_CLOSE
+  -> 从 MySQL 累积日线并计算 RSI
   -> Java Wilder RSI + 配置阈值
   -> 数据库 cooldown
   -> OversoldDetectedEvent
@@ -48,7 +50,7 @@ MarketStressScheduler（America/New_York 交易时段）
 - `event`：轻量级 Spring ApplicationEvent 流水线
 - `config`：类型安全配置与线程池
 
-数据库由 `V1__initial_schema.sql` 创建财报表，由 `V2__market_stress_analysis.sql` 创建市场压力历史表，表名统一为大写。业务 SQL 全部位于 `src/main/resources/mapper/*.xml`。`MARKET_STRESS_ANALYSIS` 每次触发新增一行，不覆盖历史记录。
+数据库由 `V1__initial_schema.sql` 创建财报表，`V2__market_stress_analysis.sql` 创建市场压力历史表，`V3__market_daily_close.sql` 创建每日收盘价表，表名统一为大写。业务 SQL 全部位于 `src/main/resources/mapper/*.xml`。`MARKET_STRESS_ANALYSIS` 每次触发新增一行，不覆盖历史记录；`MARKET_DAILY_CLOSE` 使用 `symbol + trade_date` 唯一约束防止每小时重复保存。
 
 ## 2. 环境要求
 
@@ -56,9 +58,7 @@ MarketStressScheduler（America/New_York 交易时段）
 - Docker / Docker Compose（推荐用于本地 MySQL）
 - 可访问 SEC、OpenAI 和 Telegram API 的网络
 - OpenAI API Key
-- 启用 Market Stress 时需要已入金并开通行情 API 权限的 IBKR 账户
-- 本机运行并登录 IBKR Client Portal Gateway
-- 获取市场新闻时仍需要 Alpha Vantage API Key；未配置时新闻获取失败会降级为空列表
+- 启用 Market Stress 时需要 Finnhub API Key
 - 有效且包含联系方式的 SEC User-Agent，例如 `self-investor/0.1 you@example.com`
 
 不要求本机安装 Maven；仓库包含 Maven Wrapper。
@@ -118,12 +118,9 @@ Market Stress 配置：
 | `MARKET_STRESS_COOLDOWN_HOURS` | `12` | 同标的 AI 分析冷却时间 |
 | `MARKET_STRESS_INTERVAL_MINUTES` | `60` | 盘中扫描间隔 |
 | `MARKET_STRESS_MARKET_HOURS_ONLY` | `true` | 只在纽约常规交易时段扫描 |
-| `MARKET_STRESS_MARKET_DATA_PROVIDER` | `ibkr` | 行情实现，可切换为 `alpha-vantage` |
-| `IBKR_CLIENT_PORTAL_BASE_URL` | `https://localhost:5000/v1/api` | 本地 Client Portal Gateway 地址 |
-| `IBKR_VERIFY_SSL` | `false` | 本地 Gateway 使用自签名证书；仅允许对回环地址关闭校验 |
-| `IBKR_REQUIRE_REALTIME` | `true` | 拒绝延迟、冻结或未订阅行情 |
-| `IBKR_COMPETE_SESSION` | `false` | 不抢占同一用户名的其他 Brokerage Session |
-| `ALPHA_VANTAGE_API_KEY` | 空 | 当前仅用于最近市场新闻；也可切回 Alpha Vantage 行情 |
+| `FINNHUB_API_KEY` | 空 | Finnhub Quote 与 Market News API Key |
+| `FINNHUB_BASE_URL` | `https://finnhub.io/api/v1` | Finnhub API 根地址 |
+| `FINNHUB_VIX_SYMBOL` | `^VIX` | VIX 查询代码；免费套餐不可用时保存为 `null` |
 | `MARKET_STRESS_NEWS_LOOKBACK_HOURS` | `72` | 新闻回溯窗口 |
 | `MARKET_STRESS_MAX_NEWS_ARTICLES` | `30` | 最多发送给 GPT 的新闻数量 |
 
@@ -142,55 +139,24 @@ API Key、SMTP/数据库密码和 Telegram token 均只从环境变量读取，�
 
 ### 启用 Market Stress
 
-#### 1. 启动 IBKR Client Portal Gateway
-
-从 [IBKR Web API 页面](https://www.interactivebrokers.com/campus/ibkr-api-page/webapi-doc/) 下载并解压 Client Portal Gateway。按照 IBKR 包内说明启动 Gateway，然后在浏览器打开 `https://localhost:5000` 完成交互式登录。行情接口必须存在已认证的 Brokerage Session；登录通常需要每天重新完成，并可能受 IBKR 每日维护影响。
-
-可以先检查会话：
-
-```bash
-curl -k -X POST https://localhost:5000/v1/api/iserver/auth/status
-```
-
-返回内容应包含：
-
-```json
-{
-  "authenticated": true,
-  "connected": true
-}
-```
-
-同一个 IBKR 用户名同时只能有一个 Brokerage Session。默认 `IBKR_COMPETE_SESSION=false`，程序不会主动踢掉已登录的 TWS 或手机交易会话。建议为 API 创建符合 IBKR规则的独立用户名，并为该用户名配置所需行情权限。
-
-#### 2. 启动项目
-
 最小配置如下；先保持邮件关闭验证行情和数据库，再配置 SMTP：
 
 ```bash
 export MARKET_STRESS_ENABLED=true
-export MARKET_STRESS_MARKET_DATA_PROVIDER=ibkr
-export IBKR_CLIENT_PORTAL_BASE_URL='https://localhost:5000/v1/api'
-export IBKR_REQUIRE_REALTIME=true
-export ALPHA_VANTAGE_API_KEY='your-alpha-vantage-key-for-news'
+export FINNHUB_API_KEY='your-finnhub-api-key'
 export OPENAI_API_KEY='your-openai-key'
 ```
 
-Scheduler 每 60 分钟检查一次，但只在 `America/New_York` 的正常交易日和常规时段执行。IBKR 历史日线按纽约日期缓存，每小时扫描只刷新触发标的最新价；跨资产行情和新闻只在 RSI 触发且通过 cooldown 后获取。内部分析时间均保存为 UTC。RSI 由 Java 使用 Wilder 方法计算，GPT 只负责事件分类，不负责计算 RSI 或最终分数。
+Scheduler 每 60 分钟检查一次，但只在 `America/New_York` 的正常交易日和常规时段执行。每次 Quote 响应中的 `pc` 是上一交易日正式收盘价，系统将其按交易日期去重保存；`c` 只作为本轮盘中价格参与实时 RSI，不会冒充正式收盘价写入历史表。
 
-项目调用标准 `/iserver/marketdata/snapshot` top-of-book 接口并执行官方要求的首次预热请求，不调用收费的 `/md/regsnapshot` 监管快照接口。行情字段 `6509` 不以 `R` 开头时，本轮扫描会失败并记录日志，避免用 15～20 分钟延迟行情触发研究信号。每四分钟调用一次 `/tickle` 保持会话；该请求不是行情快照，也不会增加监管快照计数。
-
-如果 IBKR 自动搜索出的合约不符合账户地区或行情权限，可以在私有配置中指定 conid：
-
-```yaml
-market-stress:
-  provider:
-    ibkr:
-      conids:
-        QQQ: 你的QQQ_CONID
-        SPY: 你的SPY_CONID
-        VIX: 你的VIX_CONID
+```sql
+SELECT symbol, trade_date, close_price, source
+FROM MARKET_DAILY_CLOSE
+WHERE symbol = 'QQQ'
+ORDER BY trade_date;
 ```
+
+系统不会调用 Finnhub Premium `/stock/candle`。RSI6 需要至少 7 个价格观测值，盘中计算时通常是 6 个已保存收盘价加当前价；RSI14 至少需要 15 个价格观测值。数据不足时只记录收盘价并输出积累进度，不创建分析记录、不调用 OpenAI。应用必须每个交易日至少成功运行一次；停机跨过多个交易日时，免费 Quote API 无法补回漏掉的历史收盘价。
 
 ## 5. 添加关注公司
 
@@ -297,6 +263,9 @@ FROM AI_ANALYSIS ORDER BY id DESC;
 
 SELECT id, symbol, analysis_time, rsi6, mean_reversion_score, action, status, error_message
 FROM MARKET_STRESS_ANALYSIS ORDER BY id DESC;
+
+SELECT symbol, trade_date, close_price, source, created_at
+FROM MARKET_DAILY_CLOSE ORDER BY symbol, trade_date;
 ```
 
 原始附件和清洗内容保存在 `FILING_DOCUMENT.raw_content` 与 `clean_content`。AI 输出中 `consensusComparisonAvailable` 被强制为 `false`，因为本版本没有接入分析师一致预期，不能判断 Beat/Miss。
@@ -311,12 +280,11 @@ FROM MARKET_STRESS_ANALYSIS ORDER BY id DESC;
 - Telegram 失败会重试并记录日志，但当前没有独立通知 outbox 表。
 - `FAILED` 不会无限自动重跑；排查 `error_message` 后需人工修复或增加运维重试入口。
 - 单实例运行最符合 MVP 定位。数据库唯一约束可保证多实例发现时不重复入库，但没有分布式任务租约。
-- Market Stress 默认使用 IBKR Client Portal Web API 获取股票和 ETF 行情，必须保持本地 Gateway 与 Brokerage Session 可用。会话在长期无请求时会失效，因此应用每四分钟发送一次官方 `/tickle` 保活；每日认证重置后仍可能需要人工登录。
-- IBKR Provider 第一版只对 VIX 提供直接指数查询。US2Y、US10Y、US30Y、DXY、WTI、Brent 和 Gold 没有被期货或 ETF 代理替代，当前明确保存为 `null`，后续应接 FRED、美国财政部或对应官方宏观数据源。
-- 免费 `US Real-Time Non-Consolidated Streaming Quotes` 不是完整 NBBO。系统会校验 IBKR `6509` 行情可用性为实时，但数据覆盖仍以账户实际交易所订阅为准。
-- 可通过 `MARKET_STRESS_MARKET_DATA_PROVIDER=alpha-vantage` 回退原行情实现。Alpha Vantage compact 日线可能不足 200 个交易日，无法计算 MA200 时该字段为 `null`。
-- 新闻相关性第一版采用供应商 `financial_markets` 过滤加本地关键词分类，不包含复杂爬虫、新闻反应函数或自动重大新闻重触发。
-- 该模块只读取 IBKR 行情并生成 AI Investment Research Signal，没有任何下单接口，也不会执行交易。
+- Market Stress 使用 Finnhub 免费 Quote API，不调用 Premium Candle。新数据库需要先积累收盘价：RSI6通常约需6个已结束交易日，RSI14约需14个已结束交易日，MA20/MA50/MA200需要更长时间。
+- 如果程序某个交易日完全没有运行，后续免费 Quote 只能提供最近一个上一收盘价，无法自动补齐更早缺口；需要人工导入可信历史数据或等待重新积累。
+- Finnhub免费 Quote 主要覆盖美国股票。VIX是否可用取决于当前套餐；US2Y、US10Y、US30Y、DXY、WTI、Brent和Gold当前明确保存为 `null`，不会使用ETF或期货冒充宏观现货序列。
+- 新闻相关性第一版采用 Finnhub `general` Market News 加本地关键词分类，不包含复杂爬虫、新闻反应函数或自动重大新闻重触发。
+- 该模块只读取 Finnhub 行情并生成 AI Investment Research Signal，没有任何下单接口，也不会执行交易。
 
 未来可在现有 `SecClient`、`NotificationService` 和事件边界后加入 IR 监听、Consensus、Earnings Call、估值和券商接口，而不需要改写核心 filing 流水线。
 

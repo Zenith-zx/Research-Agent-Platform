@@ -4,6 +4,7 @@ import com.selfinvestor.earnings.enums.MarketMetricType;
 import com.selfinvestor.earnings.marketstress.dto.CrossAssetSnapshotDTO;
 import com.selfinvestor.earnings.marketstress.dto.DailyBarDTO;
 import com.selfinvestor.earnings.marketstress.dto.MarketMetricDTO;
+import com.selfinvestor.earnings.marketstress.dto.MarketQuoteDTO;
 import com.selfinvestor.earnings.marketstress.dto.MarketSnapshotDTO;
 import com.selfinvestor.earnings.marketstress.dto.SymbolSnapshotDTO;
 import com.selfinvestor.earnings.marketstress.provider.MarketDataProvider;
@@ -109,6 +110,11 @@ public class MarketSnapshotBuilder {
      */
     private MarketMetricDTO safeEtfReturn(String symbol) {
         try {
+            MarketQuoteDTO quote = marketDataProvider.getQuote(symbol);
+            if (quote != null && quote.getDailyReturn() != null) {
+                return new MarketMetricDTO(symbol + "_RETURN", quote.getDailyReturn(), null, "%",
+                        quote.getTimestamp(), quote.getSource());
+            }
             List<DailyBarDTO> bars = marketDataProvider.getDailyBars(symbol, 2);
             if (bars.size() < 2) {
                 return unavailable(symbol + "_RETURN", "%");

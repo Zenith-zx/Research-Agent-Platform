@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.selfinvestor.earnings.repository.DailyMarketCloseRepository">
+    <resultMap id="DailyMarketCloseMap" type="com.selfinvestor.earnings.marketstress.DailyMarketClosePO">
+        <id property="id" column="id"/>
+        <result property="symbol" column="symbol"/>
+        <result property="tradeDate" column="trade_date"/>
+        <result property="closePrice" column="close_price"/>
+        <result property="source" column="source"/>
+        <result property="createdAt" column="created_at"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.selfinvestor.earnings.marketstress.DailyMarketClosePO"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+        INSERT INTO MARKET_DAILY_CLOSE (symbol, trade_date, close_price, source, created_at)
+        VALUES (UPPER(#{symbol}), #{tradeDate}, #{closePrice}, #{source}, CURRENT_TIMESTAMP)
+    </insert>
+
+    <select id="findBySymbolAndTradeDate" resultMap="DailyMarketCloseMap">
+        SELECT id, symbol, trade_date, close_price, source, created_at
+        FROM MARKET_DAILY_CLOSE
+        WHERE UPPER(symbol) = UPPER(#{symbol}) AND trade_date = #{tradeDate}
+    </select>
+
+    <select id="findLatest" resultMap="DailyMarketCloseMap">
+        SELECT id, symbol, trade_date, close_price, source, created_at
+        FROM (
+            SELECT id, symbol, trade_date, close_price, source, created_at
+            FROM MARKET_DAILY_CLOSE
+            WHERE UPPER(symbol) = UPPER(#{symbol})
+            ORDER BY trade_date DESC
+            LIMIT #{limit}
+        ) RECENT_CLOSES
+        ORDER BY trade_date ASC
+    </select>
+</mapper>

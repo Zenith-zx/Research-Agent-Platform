@@ -25,6 +25,10 @@ public class MarketQuoteDTO {
      */
     private BigDecimal dailyReturn;
     /**
+     * 上一交易日正式收盘价。
+     */
+    private BigDecimal previousClose;
+    /**
      * 数据时间戳。
      */
     private Instant timestamp;

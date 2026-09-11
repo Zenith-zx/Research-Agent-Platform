@@ -1,0 +1,11 @@
+CREATE TABLE MARKET_DAILY_CLOSE (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    symbol VARCHAR(16) NOT NULL,
+    trade_date DATE NOT NULL,
+    close_price DECIMAL(20, 8) NOT NULL,
+    source VARCHAR(64) NOT NULL,
+    created_at TIMESTAMP(6) NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY UK_MARKET_DAILY_CLOSE_SYMBOL_DATE (symbol, trade_date),
+    INDEX IDX_MARKET_DAILY_CLOSE_SYMBOL_DATE (symbol, trade_date)
+);

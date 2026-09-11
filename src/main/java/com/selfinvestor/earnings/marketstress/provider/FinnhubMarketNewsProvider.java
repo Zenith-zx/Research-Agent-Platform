@@ -5,13 +5,10 @@ import com.selfinvestor.earnings.enums.NewsCategory;
 import com.selfinvestor.earnings.marketstress.dto.MarketNewsDTO;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -22,23 +19,20 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Alpha Vantage 市场新闻供应商。
+ * Finnhub 市场新闻供应商。
  */
 @Component
 @Slf4j
-public class AlphaVantageMarketNewsProvider implements MarketNewsProvider {
-    private static final DateTimeFormatter REQUEST_TIME = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmm").withZone(ZoneOffset.UTC);
-    private static final DateTimeFormatter RESPONSE_TIME = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss").withZone(ZoneOffset.UTC);
-
+public class FinnhubMarketNewsProvider implements MarketNewsProvider {
     @Resource
-    private AlphaVantageClient client;
+    private FinnhubClient client;
 
     /**
-     * 获取、分类、去重并限制市场新闻数量。
+     * 获取、分类、去重并限制最近市场新闻。
      *
      * @param lookback 回溯时间
      * @param limit 最大新闻数量
-     * @return 市场新闻
+     * @return 按时间倒序排列的市场新闻
      */
     @Override
     public List<MarketNewsDTO> getRecentMarketNews(Duration lookback, int limit) {
@@ -46,30 +40,25 @@ public class AlphaVantageMarketNewsProvider implements MarketNewsProvider {
             return new ArrayList<>();
         }
         Instant cutoff = Instant.now().minus(lookback);
-        Map<String, String> parameters = new LinkedHashMap<>();
-        parameters.put("function", "NEWS_SENTIMENT");
-        parameters.put("topics", "financial_markets");
-        parameters.put("time_from", REQUEST_TIME.format(cutoff));
-        parameters.put("sort", "LATEST");
-        parameters.put("limit", Integer.toString(Math.min(1000, Math.max(limit * 3, limit))));
-        JsonNode response = client.get(parameters);
-        JsonNode feed = response.path("feed");
-        if (!feed.isArray()) {
-            log.warn("Market news unavailable from Alpha Vantage");
+        Map<String, Object> parameters = new LinkedHashMap<>();
+        parameters.put("category", "general");
+        parameters.put("minId", 0);
+        JsonNode response = client.get("/news", parameters);
+        if (!response.isArray()) {
+            log.warn("Market news unavailable from Finnhub");
             return new ArrayList<>();
         }
         List<MarketNewsDTO> news = new ArrayList<>();
         Set<String> keys = new HashSet<>();
-        for (JsonNode item : feed) {
-            try {
-                MarketNewsDTO article = map(item);
-                String key = article.getUrl() == null || article.getUrl().isBlank()
-                        ? article.getTitle().toLowerCase(Locale.ROOT) : article.getUrl();
-                if (!article.getPublishedAt().isBefore(cutoff) && keys.add(key)) {
-                    news.add(article);
-                }
-            } catch (RuntimeException exception) {
-                log.warn("Ignoring malformed market news item: reason={}", exception.getMessage());
+        for (JsonNode item : response) {
+            MarketNewsDTO article = map(item);
+            if (article.getPublishedAt() == null || article.getPublishedAt().isBefore(cutoff)) {
+                continue;
+            }
+            String key = article.getUrl() == null || article.getUrl().isBlank()
+                    ? article.getTitle().toLowerCase(Locale.ROOT) : article.getUrl();
+            if (keys.add(key)) {
+                news.add(article);
             }
         }
         news.sort(Comparator.comparing(MarketNewsDTO::getPublishedAt).reversed());
@@ -80,16 +69,17 @@ public class AlphaVantageMarketNewsProvider implements MarketNewsProvider {
     }
 
     /**
-     * 将供应商新闻映射为统一 DTO。
+     * 将 Finnhub 新闻映射为统一 DTO。
      *
      * @param item 新闻 JSON
      * @return 新闻 DTO
      */
     private MarketNewsDTO map(JsonNode item) {
         MarketNewsDTO article = new MarketNewsDTO();
-        article.setTitle(item.path("title").asText(""));
-        article.setSource(item.path("source").asText("Alpha Vantage"));
-        article.setPublishedAt(Instant.from(RESPONSE_TIME.parse(item.path("time_published").asText())));
+        article.setTitle(item.path("headline").asText(""));
+        article.setSource(item.path("source").asText("Finnhub"));
+        long timestamp = item.path("datetime").asLong(0L);
+        article.setPublishedAt(timestamp > 0 ? Instant.ofEpochSecond(timestamp) : null);
         article.setSummary(item.path("summary").asText(""));
         article.setUrl(item.path("url").asText(""));
         article.setCategory(classify(article.getTitle() + " " + article.getSummary()));
@@ -97,9 +87,9 @@ public class AlphaVantageMarketNewsProvider implements MarketNewsProvider {
     }
 
     /**
-     * 按关键词对重要市场新闻进行轻量分类。
+     * 按关键词对市场新闻进行轻量分类。
      *
-     * @param text 标题和摘要
+     * @param text 标题与摘要
      * @return 新闻类别
      */
     private NewsCategory classify(String text) {

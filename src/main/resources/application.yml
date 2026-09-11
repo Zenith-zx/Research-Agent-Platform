@@ -1,6 +1,8 @@
 spring:
   application:
     name: earnings-monitor
+  config:
+    import: optional:file:.env[.properties]
   datasource:
     url: ${DB_URL:jdbc:mysql://localhost:3306/earnings?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
     username: ${DB_USERNAME:earnings}
@@ -11,7 +13,7 @@ spring:
     host: ${MAIL_HOST:}
     port: ${MAIL_PORT:587}
     username: ${MAIL_USERNAME:zhouxin.hzau.hust@gmail.com}
-    password: ${MAIL_PASSWORD:zhouxin123}
+    password: ${MAIL_PASSWORD:}
     properties:
       mail:
         smtp:
@@ -40,7 +42,7 @@ earnings:
     min-request-interval: 120ms
   openai:
     base-url: https://api.openai.com
-    api-key: ${OPENAI_API_KEY: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}
+    api-key: ${OPENAI_API_KEY:}
     model: ${OPENAI_MODEL:GPT-5.6-Sol}
     max-input-chars: ${OPENAI_MAX_INPUT_CHARS:60000}
   telegram:
@@ -63,21 +65,13 @@ market-stress:
     interval-minutes: ${MARKET_STRESS_INTERVAL_MINUTES:60}
     market-hours-only: ${MARKET_STRESS_MARKET_HOURS_ONLY:true}
   provider:
-    market-data: ${MARKET_STRESS_MARKET_DATA_PROVIDER:ibkr}
-    base-url: ${ALPHA_VANTAGE_BASE_URL:https://www.alphavantage.co}
-    api-key: ${ALPHA_VANTAGE_API_KEY:}
+    base-url: ${FINNHUB_BASE_URL:https://finnhub.io/api/v1}
+    api-key: ${FINNHUB_API_KEY:}
     connect-timeout: 5s
     read-timeout: 30s
     news-lookback-hours: ${MARKET_STRESS_NEWS_LOOKBACK_HOURS:72}
     max-news-articles: ${MARKET_STRESS_MAX_NEWS_ARTICLES:30}
-    ibkr:
-      base-url: ${IBKR_CLIENT_PORTAL_BASE_URL:https://localhost:5000/v1/api}
-      connect-timeout: ${IBKR_CONNECT_TIMEOUT:5s}
-      read-timeout: ${IBKR_READ_TIMEOUT:30s}
-      verify-ssl: ${IBKR_VERIFY_SSL:false}
-      require-realtime: ${IBKR_REQUIRE_REALTIME:true}
-      snapshot-preflight-delay: ${IBKR_SNAPSHOT_PREFLIGHT_DELAY:500ms}
-      compete-session: ${IBKR_COMPETE_SESSION:false}
+    vix-symbol: ${FINNHUB_VIX_SYMBOL:^VIX}
   scoring:
     technical-oversold-weight: ${MARKET_STRESS_WEIGHT_TECHNICAL:20}
     event-reversibility-weight: ${MARKET_STRESS_WEIGHT_REVERSIBILITY:20}

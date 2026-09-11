@@ -40,12 +40,38 @@ public class UsMarketSessionService {
     public boolean isRegularSession(Instant instant) {
         ZonedDateTime newYorkTime = instant.atZone(NEW_YORK);
         LocalDate date = newYorkTime.toLocalDate();
-        if (date.getDayOfWeek() == DayOfWeek.SATURDAY || date.getDayOfWeek() == DayOfWeek.SUNDAY || isHoliday(date)) {
+        if (!isTradingDay(date)) {
             return false;
         }
         LocalTime time = newYorkTime.toLocalTime();
         LocalTime close = isEarlyClose(date) ? LocalTime.of(13, 0) : CLOSE;
         return !time.isBefore(OPEN) && time.isBefore(close);
+    }
+
+    /**
+     * 判断纽约日期是否为美股交易日。
+     *
+     * @param date 纽约日期
+     * @return 是否为交易日
+     */
+    public boolean isTradingDay(LocalDate date) {
+        return date.getDayOfWeek() != DayOfWeek.SATURDAY
+                && date.getDayOfWeek() != DayOfWeek.SUNDAY
+                && !isHoliday(date);
+    }
+
+    /**
+     * 查询指定纽约日期之前最近的交易日。
+     *
+     * @param date 纽约日期
+     * @return 上一交易日
+     */
+    public LocalDate previousTradingDay(LocalDate date) {
+        LocalDate candidate = date.minusDays(1);
+        while (!isTradingDay(candidate)) {
+            candidate = candidate.minusDays(1);
+        }
+        return candidate;
     }
 
     /**
