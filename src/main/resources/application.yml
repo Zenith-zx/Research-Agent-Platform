@@ -10,8 +10,8 @@ spring:
   mail:
     host: ${MAIL_HOST:}
     port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME:}
-    password: ${MAIL_PASSWORD:}
+    username: ${MAIL_USERNAME:zhouxin.hzau.hust@gmail.com}
+    password: ${MAIL_PASSWORD:zhouxin123}
     properties:
       mail:
         smtp:
@@ -34,14 +34,14 @@ earnings:
   sec:
     base-url: https://www.sec.gov
     data-base-url: https://data.sec.gov
-    user-agent: ${SEC_USER_AGENT}
+    user-agent: ${SEC_USER_AGENT:self-investor/0.1 zhouxin.hzau.hust@gmail.com}
     connect-timeout: 5s
     read-timeout: 30s
     min-request-interval: 120ms
   openai:
     base-url: https://api.openai.com
-    api-key: ${OPENAI_API_KEY:}
-    model: ${OPENAI_MODEL:gpt-5-mini}
+    api-key: ${OPENAI_API_KEY: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}
+    model: ${OPENAI_MODEL:GPT-5.6-Sol}
     max-input-chars: ${OPENAI_MAX_INPUT_CHARS:60000}
   telegram:
     enabled: ${TELEGRAM_ENABLED:false}
@@ -87,4 +87,4 @@ market-stress:
     seller-exhaustion-weight: ${MARKET_STRESS_WEIGHT_EXHAUSTION:10}
   email:
     enabled: ${MARKET_STRESS_EMAIL_ENABLED:false}
-    recipients: ${MARKET_STRESS_EMAIL_RECIPIENTS:}
+    recipients: ${MARKET_STRESS_EMAIL_RECIPIENTS:zhouxin.hzau.hust@gmail.com}
