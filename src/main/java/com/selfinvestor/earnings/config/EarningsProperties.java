@@ -41,6 +41,14 @@ public class EarningsProperties {
          * 监听间隔秒数。
          */
         private long intervalSeconds = 30;
+        /**
+         * 注册 SEC Filing 时允许回溯的自然日数。
+         */
+        private int filingLookbackDays = 30;
+        /**
+         * 应用启动时最多恢复的未完成 Filing 数量。
+         */
+        private int recoveryBatchSize = 20;
     }
 
     /**
@@ -95,6 +103,22 @@ public class EarningsProperties {
          * 单次输入最大字符数。
          */
         private int maxInputChars = 60000;
+        /**
+         * OpenAI API 连接超时时间。
+         */
+        private Duration connectTimeout = Duration.ofSeconds(10);
+        /**
+         * OpenAI API 响应读取超时时间。
+         */
+        private Duration readTimeout = Duration.ofSeconds(120);
+        /**
+         * 可选 HTTP 代理主机；为空时直接连接。
+         */
+        private String proxyHost;
+        /**
+         * 可选 HTTP 代理端口。
+         */
+        private int proxyPort;
     }
 
     /**

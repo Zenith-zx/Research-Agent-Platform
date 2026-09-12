@@ -33,6 +33,8 @@ earnings:
   monitor:
     enabled: ${EARNINGS_MONITOR_ENABLED:true}
     interval-seconds: ${EARNINGS_MONITOR_INTERVAL_SECONDS:30}
+    filing-lookback-days: ${EARNINGS_FILING_LOOKBACK_DAYS:30}
+    recovery-batch-size: ${EARNINGS_RECOVERY_BATCH_SIZE:20}
   sec:
     base-url: https://www.sec.gov
     data-base-url: https://data.sec.gov
@@ -43,8 +45,12 @@ earnings:
   openai:
     base-url: https://api.openai.com
     api-key: ${OPENAI_API_KEY:}
-    model: ${OPENAI_MODEL:GPT-5.6-Sol}
+    model: ${OPENAI_MODEL:gpt-5.6-sol}
     max-input-chars: ${OPENAI_MAX_INPUT_CHARS:60000}
+    connect-timeout: ${OPENAI_CONNECT_TIMEOUT:10s}
+    read-timeout: ${OPENAI_READ_TIMEOUT:120s}
+    proxy-host: ${OPENAI_PROXY_HOST:}
+    proxy-port: ${OPENAI_PROXY_PORT:0}
   telegram:
     enabled: ${TELEGRAM_ENABLED:false}
     bot-token: ${TELEGRAM_BOT_TOKEN:}

@@ -6,20 +6,26 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.selfinvestor.earnings.analysis.dto.FinancialAnalysisDTO;
 import com.selfinvestor.earnings.marketstress.dto.MarketStressAnalysisDTO;
 import com.selfinvestor.earnings.config.EarningsProperties;
+import io.netty.channel.ChannelOption;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientRequestException;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
+import reactor.netty.http.client.HttpClient;
+import reactor.netty.transport.ProxyProvider;
 import reactor.util.retry.Retry;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.concurrent.TimeoutException;
 
 @Component
 @Slf4j
@@ -49,7 +55,27 @@ public class OpenAiClient {
      */
     @PostConstruct
     void initialize() {
-        client = webClientBuilder.clone().baseUrl(properties.getOpenai().getBaseUrl()).build();
+        EarningsProperties.OpenAi openAi = properties.getOpenai();
+        HttpClient httpClient = HttpClient.create()
+                .compress(true)
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS,
+                        Math.toIntExact(openAi.getConnectTimeout().toMillis()))
+                .responseTimeout(openAi.getReadTimeout());
+        String proxyHost = openAi.getProxyHost();
+        int proxyPort = openAi.getProxyPort();
+        if (proxyHost != null && !proxyHost.isBlank()) {
+            if (proxyPort <= 0 || proxyPort > 65535) {
+                throw new IllegalStateException("OPENAI_PROXY_PORT must be between 1 and 65535");
+            }
+            httpClient = httpClient.proxy(proxy -> proxy.type(ProxyProvider.Proxy.HTTP)
+                    .host(proxyHost)
+                    .port(proxyPort));
+            log.info("OpenAI HTTP proxy enabled: host={} port={}", proxyHost, proxyPort);
+        }
+        client = webClientBuilder.clone()
+                .baseUrl(openAi.getBaseUrl())
+                .clientConnector(new ReactorClientHttpConnector(httpClient))
+                .build();
         systemPrompt = readResource("prompts/financial-analysis-system.txt");
         try {
             schema = mapper.readTree(readResource("prompts/financial-analysis-schema.json"));
@@ -67,17 +93,12 @@ public class OpenAiClient {
      * @return 结构化分析结果
      */
     public FinancialAnalysisDTO analyze(String input) {
-        try {
-            FinancialAnalysisDTO analysis = analyzeStructured(input, systemPrompt, schema, "financial_analysis", FinancialAnalysisDTO.class);
-            if (analysis.isConsensusComparisonAvailable()) {
-                throw new IllegalArgumentException("Consensus comparison is unavailable in this MVP");
-            }
-            return analysis;
-        } catch (IllegalArgumentException exception) {
-            throw exception;
-        } catch (RuntimeException exception) {
-            throw new IllegalArgumentException("OpenAI returned invalid structured analysis", exception);
+        FinancialAnalysisDTO analysis = analyzeStructured(input, systemPrompt, schema,
+                "financial_analysis", FinancialAnalysisDTO.class);
+        if (analysis.isConsensusComparisonAvailable()) {
+            throw new IllegalArgumentException("Consensus comparison is unavailable in this MVP");
         }
+        return analysis;
     }
 
     /**
@@ -117,12 +138,30 @@ public class OpenAiClient {
         format.put("name", schemaName);
         format.put("strict", true);
         format.set("schema", outputSchema);
-        JsonNode response = client.post().uri("/v1/responses")
-                .header(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey)
-                .contentType(MediaType.APPLICATION_JSON).bodyValue(request)
-                .retrieve().bodyToMono(JsonNode.class)
-                .retryWhen(Retry.backoff(3, Duration.ofSeconds(1)).maxBackoff(Duration.ofSeconds(8)).filter(this::isRetryable))
-                .block();
+        JsonNode response;
+        try {
+            response = client.post().uri("/v1/responses")
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(request)
+                    .retrieve()
+                    .bodyToMono(JsonNode.class)
+                    .retryWhen(Retry.backoff(3, Duration.ofSeconds(1))
+                            .maxBackoff(Duration.ofSeconds(8))
+                            .filter(this::isRetryable)
+                            .doBeforeRetry(signal -> log.warn(
+                                    "OpenAI request retry: schema={} attempt={} reason={}",
+                                    schemaName, signal.totalRetries() + 1, signal.failure().getMessage()))
+                            .onRetryExhaustedThrow((retrySpec, signal) -> signal.failure()))
+                    .block();
+        } catch (WebClientRequestException exception) {
+            throw new IllegalStateException(
+                    "OpenAI API connection failed; verify network, DNS and OPENAI_PROXY_HOST/OPENAI_PROXY_PORT",
+                    exception);
+        } catch (WebClientResponseException exception) {
+            throw new IllegalStateException(
+                    "OpenAI API request failed: HTTP " + exception.getStatusCode().value(), exception);
+        }
         try {
             return mapper.readValue(extractOutputText(response), resultType);
         } catch (IOException exception) {
@@ -160,10 +199,13 @@ public class OpenAiClient {
      * @return 是否允许重试
      */
     private boolean isRetryable(Throwable error) {
-        if (!(error instanceof WebClientResponseException response)) {
+        if (error instanceof WebClientResponseException response) {
+            return response.getStatusCode().value() == 429 || response.getStatusCode().is5xxServerError();
+        }
+        if (error instanceof WebClientRequestException) {
             return true;
         }
-        return response.getStatusCode().value() == 429 || response.getStatusCode().is5xxServerError();
+        return error instanceof TimeoutException;
     }
     /**
      * 读取类路径文本资源。

@@ -4,6 +4,7 @@ import com.selfinvestor.earnings.filing.FilingPO;
 import com.selfinvestor.earnings.enums.FilingStatus;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+import java.time.LocalDate;
 import java.util.Optional;
 import java.util.Collection;
 import java.util.List;
@@ -38,6 +39,14 @@ public interface FilingRepository {
      * @return Filing 列表
      */
     List<FilingPO> findAllByStatusIn(@Param("statuses") Collection<FilingStatus> statuses);
+    /**
+     * 查询近期可以安全恢复的未完成 Filing。
+     *
+     * @param cutoffDate 最早申报日期
+     * @param limit 最大返回数量
+     * @return 待恢复 Filing 列表
+     */
+    List<FilingPO> findRecoverable(@Param("cutoffDate") LocalDate cutoffDate, @Param("limit") int limit);
     /**
      * 按主键倒序查询 Filing。
      *

@@ -7,10 +7,12 @@ import com.selfinvestor.earnings.sec.dto.SecSubmissionResponseDTO;
 import io.netty.channel.ChannelOption;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
+import org.springframework.web.reactive.function.client.WebClientRequestException;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.netty.http.client.HttpClient;
 import reactor.util.retry.Retry;
@@ -19,8 +21,10 @@ import java.time.*;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeoutException;
 
 @Component
+@Slf4j
 public class SecSubmissionClient implements SecClient {
 
     private static final ZoneId SEC_ZONE = ZoneId.of("America/New_York");
@@ -43,12 +47,12 @@ public class SecSubmissionClient implements SecClient {
     void initialize() {
         EarningsProperties.Sec sec = properties.getSec();
         HttpClient httpClient = HttpClient.create()
+                .compress(true)
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, Math.toIntExact(sec.getConnectTimeout().toMillis()))
                 .responseTimeout(sec.getReadTimeout());
         client = webClientBuilder.clone()
                 .baseUrl(sec.getDataBaseUrl())
                 .defaultHeader(HttpHeaders.USER_AGENT, sec.getUserAgent())
-                .defaultHeader(HttpHeaders.ACCEPT_ENCODING, "gzip, deflate")
                 .clientConnector(new ReactorClientHttpConnector(httpClient))
                 .build();
     }
@@ -66,7 +70,14 @@ public class SecSubmissionClient implements SecClient {
                 .uri("/submissions/CIK{cik}.json", company.getCik())
                 .retrieve()
                 .bodyToMono(SecSubmissionResponseDTO.class)
-                .retryWhen(Retry.backoff(3, Duration.ofMillis(500)).maxBackoff(Duration.ofSeconds(5)).filter(this::isRetryable))
+                .retryWhen(Retry.backoff(3, Duration.ofMillis(500))
+                        .maxBackoff(Duration.ofSeconds(5))
+                        .filter(this::isRetryable)
+                        .doBeforeRetry(signal -> log.warn(
+                                "SEC submissions request retry: ticker={} cik={} attempt={} reason={}",
+                                company.getTicker(), company.getCik(), signal.totalRetries() + 1,
+                                signal.failure().getMessage()))
+                        .onRetryExhaustedThrow((retrySpec, signal) -> signal.failure()))
                 .block();
         if (response == null || response.getFilings() == null || response.getFilings().getRecent() == null) {
             return Collections.emptyList();
@@ -131,9 +142,12 @@ public class SecSubmissionClient implements SecClient {
      * @return 是否允许重试
      */
     private boolean isRetryable(Throwable error) {
-        if (!(error instanceof WebClientResponseException response)) {
+        if (error instanceof WebClientResponseException response) {
+            return response.getStatusCode().value() == 429 || response.getStatusCode().is5xxServerError();
+        }
+        if (error instanceof WebClientRequestException) {
             return true;
         }
-        return response.getStatusCode().value() == 429 || response.getStatusCode().is5xxServerError();
+        return error instanceof TimeoutException;
     }
 }

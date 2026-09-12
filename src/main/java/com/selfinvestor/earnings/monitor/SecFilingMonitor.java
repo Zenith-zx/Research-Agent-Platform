@@ -1,12 +1,15 @@
 package com.selfinvestor.earnings.monitor;
 
 import com.selfinvestor.earnings.company.CompanyPO;
+import com.selfinvestor.earnings.config.EarningsProperties;
 import com.selfinvestor.earnings.service.FilingService;
 import com.selfinvestor.earnings.sec.SecClient;
 import com.selfinvestor.earnings.sec.dto.SecFilingMetadataDTO;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.Locale;
 import java.util.Set;
 import java.util.Arrays;
@@ -19,6 +22,8 @@ public class SecFilingMonitor implements FilingMonitor {
     private SecClient secClient;
     @Resource
     private FilingService filingService;
+    @Resource
+    private EarningsProperties properties;
 
     /**
      * 拉取并注册公司的财报相关 Filing。
@@ -27,8 +32,11 @@ public class SecFilingMonitor implements FilingMonitor {
      */
     @Override
     public void poll(CompanyPO company) {
+        LocalDate cutoffDate = LocalDate.now(ZoneOffset.UTC)
+                .minusDays(properties.getMonitor().getFilingLookbackDays());
         secClient.recentFilings(company).stream()
                 .filter(this::isEarningsRelated)
+                .filter(metadata -> !metadata.getFilingDate().isBefore(cutoffDate))
                 .forEach(metadata -> filingService.registerIfNew(company, metadata));
     }
 

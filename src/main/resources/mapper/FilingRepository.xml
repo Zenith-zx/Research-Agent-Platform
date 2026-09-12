@@ -54,6 +54,13 @@
         <foreach collection="statuses" item="status" open="(" separator="," close=")">#{status}</foreach>
         ORDER BY f.id
     </select>
+    <select id="findRecoverable" resultMap="FilingMap">
+        SELECT <include refid="FilingJoinColumns"/> FROM FILING f JOIN COMPANY c ON c.id = f.company_id
+        WHERE f.status IN ('DETECTED', 'DOWNLOADING', 'DOWNLOADED', 'PARSING', 'PARSED', 'ANALYZING')
+          AND f.filing_date &gt;= #{cutoffDate}
+        ORDER BY f.id
+        LIMIT #{limit}
+    </select>
     <select id="findAllByOrderByIdDesc" resultMap="FilingMap">
         SELECT <include refid="FilingJoinColumns"/> FROM FILING f JOIN COMPANY c ON c.id = f.company_id ORDER BY f.id DESC
     </select>

@@ -13,6 +13,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class OpenAiClientTest {
     private MockWebServer server;
@@ -65,5 +66,30 @@ class OpenAiClientTest {
         assertThat(request.getPath()).isEqualTo("/v1/responses");
         assertThat(requestBody).contains("\"type\":\"json_schema\"", "\"strict\":true", "financial_analysis");
         assertThat(request.getHeader("Authorization")).isEqualTo("Bearer secret-test-key");
+    }
+
+    /**
+     * 验证 HTTP 客户端错误不会被误报为 Structured Output 解析错误。
+     */
+    @Test
+    void preservesOpenAiHttpErrorClassification() {
+        server.enqueue(new MockResponse().setResponseCode(400)
+                .setHeader("Content-Type", "application/json")
+                .setBody("{\"error\":{\"message\":\"invalid request\"}}"));
+        EarningsProperties properties = new EarningsProperties();
+        properties.getOpenai().setBaseUrl(server.url("/").toString());
+        properties.getOpenai().setApiKey("secret-test-key");
+        properties.getOpenai().setModel("test-model");
+        OpenAiClient client = new OpenAiClient();
+        ReflectionTestUtils.setField(client, "webClientBuilder", WebClient.builder());
+        ReflectionTestUtils.setField(client, "mapper", new ObjectMapper());
+        ReflectionTestUtils.setField(client, "properties", properties);
+        client.initialize();
+
+        assertThatThrownBy(() -> client.analyze("filing"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("OpenAI API request failed: HTTP 400")
+                .hasCauseInstanceOf(org.springframework.web.reactive.function.client.WebClientResponseException.class);
+        assertThat(server.getRequestCount()).isOne();
     }
 }

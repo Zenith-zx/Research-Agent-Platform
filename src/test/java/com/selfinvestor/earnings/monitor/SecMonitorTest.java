@@ -1,6 +1,7 @@
 package com.selfinvestor.earnings.monitor;
 
 import com.selfinvestor.earnings.company.CompanyPO;
+import com.selfinvestor.earnings.config.EarningsProperties;
 import com.selfinvestor.earnings.service.FilingService;
 import com.selfinvestor.earnings.sec.SecClient;
 import com.selfinvestor.earnings.sec.dto.SecFilingMetadataDTO;
@@ -25,16 +26,22 @@ class SecMonitorTest {
         SecFilingMetadataDTO earnings8k = filing("a", "8-K", "2.02,9.01");
         SecFilingMetadataDTO unrelated8k = filing("b", "8-K", "5.02");
         SecFilingMetadataDTO tenQ = filing("c", "10-Q", "");
-        when(sec.recentFilings(company)).thenReturn(Arrays.asList(earnings8k, unrelated8k, tenQ));
+        SecFilingMetadataDTO oldTenK = new SecFilingMetadataDTO("d", "10-K", LocalDate.now().minusDays(31),
+                Instant.now(), "main.htm", "", "https://sec/test");
+        when(sec.recentFilings(company)).thenReturn(Arrays.asList(earnings8k, unrelated8k, tenQ, oldTenK));
 
         SecFilingMonitor monitor = new SecFilingMonitor();
+        EarningsProperties properties = new EarningsProperties();
+        properties.getMonitor().setFilingLookbackDays(30);
         ReflectionTestUtils.setField(monitor, "secClient", sec);
         ReflectionTestUtils.setField(monitor, "filingService", filingService);
+        ReflectionTestUtils.setField(monitor, "properties", properties);
         monitor.poll(company);
 
         verify(filingService).registerIfNew(company, earnings8k);
         verify(filingService).registerIfNew(company, tenQ);
         verify(filingService, never()).registerIfNew(company, unrelated8k);
+        verify(filingService, never()).registerIfNew(company, oldTenK);
     }
 
     /**

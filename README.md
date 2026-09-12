@@ -80,10 +80,9 @@ docker compose ps
 
 ```bash
 cp .env.example .env
-set -a
-source .env
-set +a
 ```
+
+Spring Boot 会通过 `spring.config.import` 自动加载项目根目录的 `.env`，无需在 Shell 中执行 `source .env`。
 
 必需配置：
 
@@ -99,9 +98,15 @@ set +a
 |---|---:|---|
 | `DB_URL` | 本地 `earnings` 数据库 | JDBC URL |
 | `DB_USERNAME` | `earnings` | 数据库用户 |
-| `OPENAI_MODEL` | `gpt-5-mini` | 支持 Structured Outputs 的模型 |
+| `OPENAI_MODEL` | `gpt-5.6-sol` | 财报与市场压力 Structured Outputs 分析模型 |
+| `OPENAI_CONNECT_TIMEOUT` | `10s` | OpenAI TCP 连接超时 |
+| `OPENAI_READ_TIMEOUT` | `120s` | OpenAI 响应读取超时 |
+| `OPENAI_PROXY_HOST` | 空 | OpenAI HTTP 代理主机；AWS 可留空直连 |
+| `OPENAI_PROXY_PORT` | `0` | OpenAI HTTP 代理端口；配置代理主机时必须为有效端口 |
 | `EARNINGS_MONITOR_ENABLED` | `true` | 是否启用轮询 |
 | `EARNINGS_MONITOR_INTERVAL_SECONDS` | `30` | 每轮结束后的等待秒数 |
+| `EARNINGS_FILING_LOOKBACK_DAYS` | `30` | 只注册最近若干自然日内的 Filing，避免首次启动处理多年历史数据 |
+| `EARNINGS_RECOVERY_BATCH_SIZE` | `20` | 每次启动最多恢复的近期未完成 Filing 数量 |
 | `TELEGRAM_ENABLED` | `false` | 是否推送 Telegram |
 | `TELEGRAM_BOT_TOKEN` | 空 | BotFather 生成的 token |
 | `TELEGRAM_CHAT_ID` | 空 | 接收消息的 chat ID |
@@ -201,7 +206,7 @@ INSERT INTO COMPANY (ticker, cik, company_name, enabled, created_at, updated_at)
 java -jar target/earnings-monitor-0.1.0-SNAPSHOT.jar
 ```
 
-日志会显示 filing 发现、附件下载和选择、清洗字符数、OpenAI 耗时以及 Telegram 推送结果。HTTP 429、5xx 和网络异常最多重试 3 次，使用指数退避；不可重试的解析错误会写入 `filing.error_message` 并将状态设为 `FAILED`。
+日志会显示 filing 发现、附件下载和选择、清洗字符数、OpenAI 耗时以及 Telegram 推送结果。HTTP 429、5xx 和网络异常最多重试 3 次，使用指数退避；不可重试的解析错误会写入 `filing.error_message` 并将状态设为 `FAILED`。首次启动默认只注册最近 30 天的 Filing；线程池满载时扫描线程会主动分担任务形成反压，不会丢失已提交事件。应用重启后会分批恢复近期停留在 `DETECTED`、`DOWNLOADING`、`DOWNLOADED`、`PARSING`、`PARSED` 或 `ANALYZING` 状态的任务。
 
 ## 7. 测试
 
