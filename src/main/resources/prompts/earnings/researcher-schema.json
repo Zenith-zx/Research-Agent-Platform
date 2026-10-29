@@ -1,0 +1,14 @@
+{
+  "type":"object","additionalProperties":false,"required":["evidence","hypotheses","openQuestions"],
+  "properties":{
+    "evidence":{"type":"array","items":{"$ref":"#/$defs/evidence"}},
+    "hypotheses":{"type":"array","items":{"$ref":"#/$defs/hypothesis"}},
+    "openQuestions":{"type":"array","items":{"$ref":"#/$defs/question"}}
+  },
+  "$defs":{
+    "evidence":{"type":"object","additionalProperties":false,"required":["evidenceId","taskId","claim","metric","value","comparison","source","sourceType","confidence"],"properties":{"evidenceId":{"type":["string","null"]},"taskId":{"type":["string","null"]},"claim":{"type":"string"},"metric":{"type":["string","null"]},"value":{"type":["string","null"]},"comparison":{"type":["string","null"]},"source":{"type":"string"},"sourceType":{"type":"string","enum":["COMPANY_EARNINGS_RELEASE","SEC_FILING","EARNINGS_CALL","INVESTOR_RELATIONS","CONSENSUS","NEWS","OTHER"]},"confidence":{"type":"number","minimum":0,"maximum":1}}},
+    "hypothesis":{"type":"object","additionalProperties":false,"required":["hypothesisId","statement","status","confidence"],"properties":{"hypothesisId":{"type":["string","null"]},"statement":{"type":"string"},"status":{"type":"string","enum":["UNTESTED","SUPPORTED","REJECTED","INCONCLUSIVE"]},"confidence":{"type":"number","minimum":0,"maximum":1}}},
+    "question":{"type":"object","additionalProperties":false,"required":["category","question","reason"],"properties":{"category":{"$ref":"#/$defs/category"},"question":{"type":"string"},"reason":{"type":"string"}}},
+    "category":{"type":"string","enum":["REVENUE","EPS","MARGIN","CASH_FLOW","GUIDANCE","SEGMENT","EXPECTATION","MANAGEMENT_COMMENTARY","OTHER"]}
+  }
+}

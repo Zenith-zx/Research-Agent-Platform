@@ -93,7 +93,7 @@ public class OpenAiClient {
      * @return 结构化分析结果
      */
     public FinancialAnalysisDTO analyze(String input) {
-        FinancialAnalysisDTO analysis = analyzeStructured(input, systemPrompt, schema,
+        FinancialAnalysisDTO analysis = generateStructured(input, systemPrompt, schema,
                 "financial_analysis", FinancialAnalysisDTO.class);
         if (analysis.isConsensusComparisonAvailable()) {
             throw new IllegalArgumentException("Consensus comparison is unavailable in this MVP");
@@ -108,7 +108,7 @@ public class OpenAiClient {
      * @return 市场压力分析
      */
     public MarketStressAnalysisDTO analyzeMarketStress(String input) {
-        return analyzeStructured(input, marketStressSystemPrompt, marketStressSchema,
+        return generateStructured(input, marketStressSystemPrompt, marketStressSchema,
                 "market_stress_analysis", MarketStressAnalysisDTO.class);
     }
 
@@ -123,7 +123,7 @@ public class OpenAiClient {
      * @param <T> 结果泛型
      * @return 结构化结果
      */
-    private <T> T analyzeStructured(String input, String instructions, JsonNode outputSchema,
+    public <T> T generateStructured(String input, String instructions, JsonNode outputSchema,
                                     String schemaName, Class<T> resultType) {
         String apiKey = properties.getOpenai().getApiKey();
         if (apiKey == null || apiKey.isBlank()) {

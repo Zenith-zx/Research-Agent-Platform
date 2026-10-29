@@ -1,0 +1,18 @@
+{
+  "type":"object","additionalProperties":false,
+  "required":["fundamentalTrend","growthTrend","marginTrend","guidanceAssessment","expectationGap","earningsQuality","confidence","positiveChanges","negativeChanges","keyRisks","nextQuarterWatchList","executiveSummary"],
+  "properties":{
+    "fundamentalTrend":{"type":"string","enum":["STRONGLY_IMPROVED","IMPROVED","UNCHANGED","DETERIORATED","STRONGLY_DETERIORATED"]},
+    "growthTrend":{"type":"string","enum":["ACCELERATING","STABLE","DECELERATING","UNKNOWN"]},
+    "marginTrend":{"type":"string","enum":["EXPANDING","STABLE","CONTRACTING","UNKNOWN"]},
+    "guidanceAssessment":{"type":"string","enum":["ABOVE_EXPECTATION","INLINE","BELOW_EXPECTATION","NO_GUIDANCE"]},
+    "expectationGap":{"type":"string","enum":["POSITIVE","NEUTRAL","NEGATIVE","UNKNOWN"]},
+    "earningsQuality":{"type":"string","enum":["HIGH","MEDIUM","LOW","UNKNOWN"]},
+    "confidence":{"type":"number","minimum":0,"maximum":1},
+    "positiveChanges":{"type":"array","items":{"type":"string"}},
+    "negativeChanges":{"type":"array","items":{"type":"string"}},
+    "keyRisks":{"type":"array","items":{"type":"string"}},
+    "nextQuarterWatchList":{"type":"array","items":{"type":"string"}},
+    "executiveSummary":{"type":"string"}
+  }
+}

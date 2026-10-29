@@ -12,6 +12,14 @@ import java.time.Duration;
 @ConfigurationProperties(prefix = "earnings")
 public class EarningsProperties {
     /**
+     * 财报分析模式。GRAPH 启用有状态 Agent，CHAIN 保留旧实现。
+     */
+    private AnalysisMode analysisMode = AnalysisMode.GRAPH;
+    /**
+     * Earnings Agent 预算和重试配置。
+     */
+    private final EarningsAgent earningsAgent = new EarningsAgent();
+    /**
      * 监听任务配置。
      */
     private final Monitor monitor = new Monitor();
@@ -27,6 +35,19 @@ public class EarningsProperties {
      * Telegram 通知配置。
      */
     private final Telegram telegram = new Telegram();
+
+    public enum AnalysisMode {
+        CHAIN,
+        GRAPH
+    }
+
+    @Data
+    public static class EarningsAgent {
+        private int maxRounds = 3;
+        private int maxSteps = 20;
+        private int maxLlmCalls = 15;
+        private int jsonRetryAttempts = 2;
+    }
 
     /**
      * Filing 监听配置。

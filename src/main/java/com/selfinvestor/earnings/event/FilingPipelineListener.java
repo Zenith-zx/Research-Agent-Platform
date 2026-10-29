@@ -1,7 +1,7 @@
 package com.selfinvestor.earnings.event;
 
 import com.selfinvestor.earnings.service.FilingProcessingService;
-import com.selfinvestor.earnings.service.AiAnalysisService;
+import com.selfinvestor.earnings.service.EarningsAnalysisService;
 import jakarta.annotation.Resource;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
@@ -15,7 +15,7 @@ public class FilingPipelineListener {
     private FilingProcessingService filingProcessingService;
 
     @Resource
-    private AiAnalysisService analysis;
+    private EarningsAnalysisService analysis;
 
     /**
      * 下载新发现的 Filing。

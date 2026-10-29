@@ -28,6 +28,12 @@ mybatis:
     default-enum-type-handler: org.apache.ibatis.type.EnumTypeHandler
 
 earnings:
+  analysis-mode: ${EARNINGS_ANALYSIS_MODE:graph}
+  earnings-agent:
+    max-rounds: ${EARNINGS_AGENT_MAX_ROUNDS:3}
+    max-steps: ${EARNINGS_AGENT_MAX_STEPS:20}
+    max-llm-calls: ${EARNINGS_AGENT_MAX_LLM_CALLS:15}
+    json-retry-attempts: ${EARNINGS_AGENT_JSON_RETRY_ATTEMPTS:2}
   simulation:
     enabled: ${EARNINGS_SIMULATION_ENABLED:false}
   monitor:

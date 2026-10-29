@@ -1,0 +1,20 @@
+CREATE TABLE EARNINGS_AGENT_RUN (
+    run_id VARCHAR(36) NOT NULL,
+    filing_id BIGINT NOT NULL,
+    ticker VARCHAR(16) NOT NULL,
+    fiscal_quarter VARCHAR(64) NULL,
+    status VARCHAR(32) NOT NULL,
+    current_round INT NOT NULL,
+    step_count INT NOT NULL,
+    llm_call_count INT NOT NULL,
+    confidence DECIMAL(6,5) NOT NULL DEFAULT 0,
+    start_time TIMESTAMP(6) NOT NULL,
+    end_time TIMESTAMP(6) NULL,
+    state_json LONGTEXT NOT NULL,
+    final_result LONGTEXT NULL,
+    error_message VARCHAR(2000) NULL,
+    PRIMARY KEY (run_id),
+    CONSTRAINT FK_AGENT_RUN_FILING FOREIGN KEY (filing_id) REFERENCES FILING(id) ON DELETE CASCADE,
+    INDEX IDX_AGENT_RUN_FILING (filing_id),
+    INDEX IDX_AGENT_RUN_STATUS (status)
+);

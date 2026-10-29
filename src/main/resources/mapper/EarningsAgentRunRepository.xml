@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.selfinvestor.earnings.repository.EarningsAgentRunRepository">
+    <resultMap id="RunMap" type="com.selfinvestor.earnings.agent.earnings.EarningsAgentRunPO">
+        <id property="runId" column="run_id"/>
+        <result property="filingId" column="filing_id"/>
+        <result property="ticker" column="ticker"/>
+        <result property="fiscalQuarter" column="fiscal_quarter"/>
+        <result property="status" column="status"/>
+        <result property="currentRound" column="current_round"/>
+        <result property="stepCount" column="step_count"/>
+        <result property="llmCallCount" column="llm_call_count"/>
+        <result property="confidence" column="confidence"/>
+        <result property="startTime" column="start_time"/>
+        <result property="endTime" column="end_time"/>
+        <result property="stateJson" column="state_json"/>
+        <result property="finalResult" column="final_result"/>
+        <result property="errorMessage" column="error_message"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.selfinvestor.earnings.agent.earnings.EarningsAgentRunPO">
+        INSERT INTO EARNINGS_AGENT_RUN
+        (run_id, filing_id, ticker, fiscal_quarter, status, current_round, step_count, llm_call_count,
+         confidence, start_time, end_time, state_json, final_result, error_message)
+        VALUES
+        (#{runId}, #{filingId}, #{ticker}, #{fiscalQuarter}, #{status}, #{currentRound}, #{stepCount}, #{llmCallCount},
+         #{confidence}, #{startTime}, #{endTime}, #{stateJson}, #{finalResult}, #{errorMessage})
+    </insert>
+
+    <update id="update" parameterType="com.selfinvestor.earnings.agent.earnings.EarningsAgentRunPO">
+        UPDATE EARNINGS_AGENT_RUN
+        SET fiscal_quarter = #{fiscalQuarter}, status = #{status}, current_round = #{currentRound},
+            step_count = #{stepCount}, llm_call_count = #{llmCallCount}, confidence = #{confidence},
+            end_time = #{endTime}, state_json = #{stateJson}, final_result = #{finalResult},
+            error_message = #{errorMessage}
+        WHERE run_id = #{runId}
+    </update>
+
+    <select id="findByRunId" resultMap="RunMap">
+        SELECT * FROM EARNINGS_AGENT_RUN WHERE run_id = #{runId}
+    </select>
+</mapper>

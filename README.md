@@ -16,6 +16,10 @@ MonitorScheduler
        -> FilingDownloadedEvent
             -> EX-99.1 / Earnings Release 打分选择 + Jsoup 清洗
             -> FilingParsedEvent
+                 -> EarningsAnalysisService（graph / chain 可切换）
+                 -> Planner -> Research -> Critic
+                      -> sufficient -> Finalizer
+                      -> insufficient -> Replanner -> Research（有预算循环）
                  -> OpenAI Responses API + strict JSON Schema
                  -> AiAnalysisCompletedEvent
                       -> Telegram NotificationService
@@ -43,6 +47,7 @@ MarketStressScheduler（America/New_York 交易时段）
 - `sec`：SEC submissions 与 filing 下载客户端
 - `filing`：实体、MyBatis Mapper 接口、去重、附件选择、解析、分块与恢复
 - `analysis`：OpenAI 客户端、MyBatis Mapper 接口、Structured Output DTO、分析存储和查询
+- `agent/earnings`：强类型 Agent State、五个节点、条件边、预算、Evidence 和 checkpoint
 - `marketstress`：行情/新闻 Provider 抽象、市场 DTO、历史分析 PO 与重触发策略
 - `service`：财报与市场压力业务服务、Telegram 和 Email 通知实现
 - `repository`：全部 MyBatis Mapper 接口
@@ -50,7 +55,7 @@ MarketStressScheduler（America/New_York 交易时段）
 - `event`：轻量级 Spring ApplicationEvent 流水线
 - `config`：类型安全配置与线程池
 
-数据库由 `V1__initial_schema.sql` 创建财报表，`V2__market_stress_analysis.sql` 创建市场压力历史表，`V3__market_daily_close.sql` 创建每日收盘价表，表名统一为大写。业务 SQL 全部位于 `src/main/resources/mapper/*.xml`。`MARKET_STRESS_ANALYSIS` 每次触发新增一行，不覆盖历史记录；`MARKET_DAILY_CLOSE` 使用 `symbol + trade_date` 唯一约束防止每小时重复保存。
+数据库由 `V1__initial_schema.sql` 创建财报表，`V2__market_stress_analysis.sql` 创建市场压力历史表，`V3__market_daily_close.sql` 创建每日收盘价表，`V4__earnings_agent_run.sql` 创建 Agent run/checkpoint 表，表名统一为大写。业务 SQL 全部位于 `src/main/resources/mapper/*.xml`。`EARNINGS_AGENT_RUN` 在每个节点后更新强类型 State 的 JSON snapshot；`AI_ANALYSIS` 继续保存兼容旧 API 和通知的最终结果。
 
 ## 2. 环境要求
 
@@ -107,6 +112,11 @@ Spring Boot 会通过 `spring.config.import` 自动加载项目根目录的 `.en
 | `EARNINGS_MONITOR_INTERVAL_SECONDS` | `30` | 每轮结束后的等待秒数 |
 | `EARNINGS_FILING_LOOKBACK_DAYS` | `30` | 只注册最近若干自然日内的 Filing，避免首次启动处理多年历史数据 |
 | `EARNINGS_RECOVERY_BATCH_SIZE` | `20` | 每次启动最多恢复的近期未完成 Filing 数量 |
+| `EARNINGS_ANALYSIS_MODE` | `graph` | `graph` 使用 LongGraph Agent，`chain` 回退到旧固定分析 |
+| `EARNINGS_AGENT_MAX_ROUNDS` | `3` | 最大研究轮数 |
+| `EARNINGS_AGENT_MAX_STEPS` | `20` | 最大 Graph 节点执行数 |
+| `EARNINGS_AGENT_MAX_LLM_CALLS` | `15` | 最大逻辑 LLM 调用数（含错误 JSON 重试） |
+| `EARNINGS_AGENT_JSON_RETRY_ATTEMPTS` | `2` | Structured Output 解析失败后的最大重试次数 |
 | `TELEGRAM_ENABLED` | `false` | 是否推送 Telegram |
 | `TELEGRAM_BOT_TOKEN` | 空 | BotFather 生成的 token |
 | `TELEGRAM_CHAT_ID` | 空 | 接收消息的 chat ID |
@@ -265,6 +275,9 @@ FROM FILING ORDER BY id DESC;
 
 SELECT filing_id, model, summary, analysis_json, created_at
 FROM AI_ANALYSIS ORDER BY id DESC;
+
+SELECT run_id, filing_id, status, current_round, step_count, llm_call_count, confidence
+FROM EARNINGS_AGENT_RUN ORDER BY start_time DESC;
 
 SELECT id, symbol, analysis_time, rsi6, mean_reversion_score, action, status, error_message
 FROM MARKET_STRESS_ANALYSIS ORDER BY id DESC;

@@ -20,10 +20,10 @@ class FlywayMigrationTest {
      */
     @Test
     void migrationCreatesCoreTablesAndAccessionUniqueConstraint() {
-        Integer tableCount = jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.tables WHERE table_name IN ('COMPANY','FILING','FILING_DOCUMENT','AI_ANALYSIS','MARKET_STRESS_ANALYSIS','MARKET_DAILY_CLOSE')", Integer.class);
+        Integer tableCount = jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.tables WHERE table_name IN ('COMPANY','FILING','FILING_DOCUMENT','AI_ANALYSIS','MARKET_STRESS_ANALYSIS','MARKET_DAILY_CLOSE','EARNINGS_AGENT_RUN')", Integer.class);
         Integer uniqueCount = jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.table_constraints WHERE table_name='FILING' AND constraint_type='UNIQUE'", Integer.class);
         Integer closeUniqueCount = jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.table_constraints WHERE table_name='MARKET_DAILY_CLOSE' AND constraint_type='UNIQUE'", Integer.class);
-        assertThat(tableCount).isEqualTo(6);
+        assertThat(tableCount).isEqualTo(7);
         assertThat(uniqueCount).isGreaterThanOrEqualTo(1);
         assertThat(closeUniqueCount).isGreaterThanOrEqualTo(1);
     }

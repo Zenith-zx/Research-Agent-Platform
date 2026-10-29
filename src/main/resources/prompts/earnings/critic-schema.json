@@ -1,0 +1,17 @@
+{
+  "type":"object","additionalProperties":false,
+  "required":["decision","evidenceQuality","confidence","missingInformation","contradictions","weakClaims","suggestedTasks"],
+  "properties":{
+    "decision":{"type":"string","enum":["SUFFICIENT","NEED_MORE_RESEARCH","BEST_EFFORT_FINISH"]},
+    "evidenceQuality":{"type":"number","minimum":0,"maximum":1},
+    "confidence":{"type":"number","minimum":0,"maximum":1},
+    "missingInformation":{"type":"array","items":{"type":"string"}},
+    "contradictions":{"type":"array","items":{"type":"string"}},
+    "weakClaims":{"type":"array","items":{"type":"string"}},
+    "suggestedTasks":{"type":"array","maxItems":4,"items":{"$ref":"#/$defs/task"}}
+  },
+  "$defs":{
+    "task":{"type":"object","additionalProperties":false,"required":["taskId","category","question","reason","priority","status"],"properties":{"taskId":{"type":["string","null"]},"category":{"$ref":"#/$defs/category"},"question":{"type":"string"},"reason":{"type":"string"},"priority":{"type":"string","enum":["HIGH","MEDIUM","LOW"]},"status":{"type":"string","enum":["PENDING"]}}},
+    "category":{"type":"string","enum":["REVENUE","EPS","MARGIN","CASH_FLOW","GUIDANCE","SEGMENT","EXPECTATION","MANAGEMENT_COMMENTARY","OTHER"]}
+  }
+}
