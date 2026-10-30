@@ -64,7 +64,7 @@ earnings:
 
 self-investor:
   macro:
-    enabled: ${SELF_INVESTOR_MACRO_ENABLED:false}
+    enabled: ${SELF_INVESTOR_MACRO_ENABLED:true}
     max-steps: ${SELF_INVESTOR_MACRO_MAX_STEPS:15}
     max-llm-calls: ${SELF_INVESTOR_MACRO_MAX_LLM_CALLS:15}
     notifications-enabled: ${SELF_INVESTOR_MACRO_NOTIFICATIONS_ENABLED:false}
