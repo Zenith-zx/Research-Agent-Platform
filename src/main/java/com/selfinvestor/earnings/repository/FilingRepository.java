@@ -54,6 +54,14 @@ public interface FilingRepository {
      */
     List<FilingPO> findAllByOrderByIdDesc();
     /**
+     * 按股票代码查询最近的 Filing。
+     *
+     * @param ticker 股票代码
+     * @param limit 最大返回数量
+     * @return 最近 Filing 列表
+     */
+    List<FilingPO> findRecentByTicker(@Param("ticker") String ticker, @Param("limit") int limit);
+    /**
      * 按主键查询 Filing。
      *
      * @param id Filing 主键

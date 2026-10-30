@@ -57,4 +57,20 @@ public class AsyncConfig {
         executor.initialize();
         return executor;
     }
+
+    /**
+     * 创建 Agent Turn 执行线程池，不同 Thread 可以并发运行。
+     *
+     * @return Agent Runtime 线程池
+     */
+    @Bean(name = "agentRuntimeExecutor")
+    public Executor agentRuntimeExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(4);
+        executor.setMaxPoolSize(4);
+        executor.setQueueCapacity(100);
+        executor.setThreadNamePrefix("agent-runtime-");
+        executor.initialize();
+        return executor;
+    }
 }

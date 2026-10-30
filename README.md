@@ -2,7 +2,11 @@
 
 这是一个 Java 17 / Spring Boot 3 / MyBatis 的个人投资研究后端。它既能监听 SEC 财报并生成基本面分析，也能在 QQQ 短期超卖时获取跨资产数据和最近市场新闻，生成 Market Stress / Mean Reversion 研究信号。结果使用 OpenAI Structured Outputs、MySQL append-only 历史记录，并支持 Telegram 与邮件通知。
 
-本项目不包含自动交易、复杂前端、市场一致预期或估值功能。
+本项目不包含自动交易或复杂前端，不自动采集市场一致预期。宏观发布输入可携带有来源的 consensus。
+
+新增 **Macro Agent V1**：CPI / NFP / FOMC / 用户输入 → 唯一 US_MACRO Thread → 共享动态 Agent Runtime
+→ 模型选择事实工具 → 结构化宏观判断 → 校验并稀疏更新 MacroState。
+实现入口、配置、示例请求、工具能力边界见 [宏观 Agent 使用与架构说明](docs/macro-agent-v1.md)。
 
 ## 1. 系统架构
 

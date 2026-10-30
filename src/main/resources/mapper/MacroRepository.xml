@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.selfinvestor.earnings.repository.MacroRepository">
+    <select id="findState" resultType="com.selfinvestor.earnings.agent.macro.model.MacroState">
+        SELECT * FROM MACRO_STATE WHERE thread_id = #{threadId}
+    </select>
+    <select id="lockState" resultType="com.selfinvestor.earnings.agent.macro.model.MacroState">
+        SELECT * FROM MACRO_STATE WHERE thread_id = #{threadId} FOR UPDATE
+    </select>
+    <insert id="insertState">
+        INSERT INTO MACRO_STATE(thread_id, growth, inflation, labor, fed, liquidity, rates, dollar, risk, version, updated_at)
+        VALUES(#{threadId}, #{growth}, #{inflation}, #{labor}, #{fed}, #{liquidity}, #{rates}, #{dollar}, #{risk}, #{version}, #{updatedAt})
+    </insert>
+    <update id="patchState">
+        UPDATE MACRO_STATE
+        <set>
+            <foreach collection="changes" index="dimension" item="value">
+                ${dimension} = #{value},
+            </foreach>
+            version = version + 1, updated_at = #{now}
+        </set>
+        WHERE thread_id = #{threadId} AND version = #{version}
+    </update>
+    <insert id="insertAnalysis">
+        INSERT INTO MACRO_ANALYSIS(turn_id, thread_id, result_json, changes_json, summary, state_version, created_at)
+        VALUES(#{turnId}, #{threadId}, #{resultJson}, #{changesJson}, #{summary}, #{stateVersion}, #{createdAt})
+    </insert>
+    <select id="recentAnalyses" resultType="com.selfinvestor.earnings.agent.macro.model.MacroRecord">
+        SELECT * FROM MACRO_ANALYSIS WHERE thread_id = #{threadId} ORDER BY created_at DESC LIMIT 5
+    </select>
+    <select id="findAnalysis" resultType="com.selfinvestor.earnings.agent.macro.model.MacroRecord">
+        SELECT * FROM MACRO_ANALYSIS WHERE turn_id = #{turnId}
+    </select>
+    <select id="recentChanges" resultType="com.selfinvestor.earnings.agent.macro.model.MacroRecord">
+        SELECT * FROM MACRO_ANALYSIS WHERE thread_id = #{threadId} AND changes_json != '{}'
+        ORDER BY created_at DESC LIMIT 5
+    </select>
+    <insert id="insertRelease">
+        INSERT INTO MACRO_RELEASE(release_id, indicator, period, release_date, payload_json, created_at)
+        VALUES(#{id}, #{indicator}, #{period}, #{date}, #{json}, CURRENT_TIMESTAMP)
+    </insert>
+    <select id="findRelease" resultType="string">
+        SELECT payload_json FROM MACRO_RELEASE WHERE release_id = #{id}
+    </select>
+    <select id="releaseHistory" resultType="string">
+        SELECT payload_json FROM MACRO_RELEASE
+        WHERE indicator = #{indicator} AND release_date &lt;= #{asOf}
+        <if test="period != null">AND period = #{period}</if>
+        ORDER BY release_date DESC, created_at DESC, release_id DESC LIMIT #{limit}
+    </select>
+</mapper>

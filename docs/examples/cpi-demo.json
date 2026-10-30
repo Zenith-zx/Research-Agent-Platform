@@ -1,0 +1,37 @@
+{
+  "releaseId": "demo-cpi-2026-09",
+  "indicator": "CPI",
+  "period": "2026-09",
+  "releaseDate": "2026-10-15T12:30:00Z",
+  "source": "SYNTHETIC DEMO ONLY — NOT REAL ECONOMIC DATA",
+  "readings": {
+    "headlineYoy": {
+      "actual": 3.1,
+      "consensus": 3,
+      "previous": 3,
+      "unit": "% YoY",
+      "consensusSource": "Synthetic demo expectation"
+    },
+    "headlineMom": {
+      "actual": 0.3,
+      "consensus": 0.2,
+      "previous": 0.2,
+      "unit": "% MoM",
+      "consensusSource": "Synthetic demo expectation"
+    },
+    "coreYoy": {
+      "actual": 3.3,
+      "consensus": 3.2,
+      "previous": 3.2,
+      "unit": "% YoY",
+      "consensusSource": "Synthetic demo expectation"
+    },
+    "coreMom": {
+      "actual": 0.3,
+      "consensus": 0.2,
+      "previous": 0.3,
+      "unit": "% MoM",
+      "consensusSource": "Synthetic demo expectation"
+    }
+  }
+}

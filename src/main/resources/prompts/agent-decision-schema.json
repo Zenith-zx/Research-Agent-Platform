@@ -1,0 +1,16 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "reasoningSummary", "toolName", "argumentsJson", "finalAnswer", "structuredResult"],
+  "properties": {
+    "type": {
+      "type": "string",
+      "enum": ["TOOL_CALL", "FINAL_ANSWER", "WAIT_FOR_USER"]
+    },
+    "reasoningSummary": {"type": "string"},
+    "toolName": {"type": ["string", "null"]},
+    "argumentsJson": {"type": "string", "description": "JSON-encoded tool arguments object, use {} for no arguments"},
+    "finalAnswer": {"type": ["string", "null"]},
+    "structuredResult": {"type": "null"}
+  }
+}

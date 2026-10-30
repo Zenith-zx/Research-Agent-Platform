@@ -7,6 +7,11 @@ import com.selfinvestor.earnings.marketstress.dto.MarketStressAnalysisDTO;
 
 public interface NotificationService {
     /**
+     * 发送已完成宏观研究；不支持的渠道默认忽略。
+     */
+    default void sendMacro(String turnId, String report) {
+    }
+    /**
      * 发送财报分析通知。
      *
      * @param filing Filing 实体

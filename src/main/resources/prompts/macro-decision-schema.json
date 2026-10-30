@@ -1,0 +1,448 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "type",
+    "reasoningSummary",
+    "toolName",
+    "argumentsJson",
+    "finalAnswer",
+    "structuredResult"
+  ],
+  "properties": {
+    "type": {
+      "type": "string",
+      "enum": [
+        "TOOL_CALL",
+        "FINAL_ANSWER",
+        "WAIT_FOR_USER"
+      ]
+    },
+    "reasoningSummary": {
+      "type": "string"
+    },
+    "toolName": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "argumentsJson": {
+      "type": "string",
+      "description": "JSON-encoded object of tool arguments; use {} when no arguments"
+    },
+    "finalAnswer": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "structuredResult": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "summary",
+            "whatChanged",
+            "proposedStateChange",
+            "keyFindings",
+            "marketImpacts",
+            "marketReaction",
+            "researchImplications",
+            "risks",
+            "confidence"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "whatChanged": {
+              "type": "string"
+            },
+            "proposedStateChange": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "growth",
+                "inflation",
+                "labor",
+                "fed",
+                "liquidity",
+                "rates",
+                "dollar",
+                "risk"
+              ],
+              "properties": {
+                "growth": {
+                  "anyOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "from",
+                        "to",
+                        "reason"
+                      ],
+                      "properties": {
+                        "from": {
+                          "type": "string",
+                          "enum": [
+                            "ACCELERATING",
+                            "STABLE",
+                            "SLOWING",
+                            "CONTRACTION",
+                            "UNKNOWN"
+                          ]
+                        },
+                        "to": {
+                          "type": "string",
+                          "enum": [
+                            "ACCELERATING",
+                            "STABLE",
+                            "SLOWING",
+                            "CONTRACTION",
+                            "UNKNOWN"
+                          ]
+                        },
+                        "reason": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  ]
+                },
+                "inflation": {
+                  "anyOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "from",
+                        "to",
+                        "reason"
+                      ],
+                      "properties": {
+                        "from": {
+                          "type": "string",
+                          "enum": [
+                            "DISINFLATION",
+                            "STABLE",
+                            "STICKY",
+                            "REACCELERATING",
+                            "UNKNOWN"
+                          ]
+                        },
+                        "to": {
+                          "type": "string",
+                          "enum": [
+                            "DISINFLATION",
+                            "STABLE",
+                            "STICKY",
+                            "REACCELERATING",
+                            "UNKNOWN"
+                          ]
+                        },
+                        "reason": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  ]
+                },
+                "labor": {
+                  "anyOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "from",
+                        "to",
+                        "reason"
+                      ],
+                      "properties": {
+                        "from": {
+                          "type": "string",
+                          "enum": [
+                            "TIGHT",
+                            "BALANCED",
+                            "COOLING",
+                            "WEAK",
+                            "UNKNOWN"
+                          ]
+                        },
+                        "to": {
+                          "type": "string",
+                          "enum": [
+                            "TIGHT",
+                            "BALANCED",
+                            "COOLING",
+                            "WEAK",
+                            "UNKNOWN"
+                          ]
+                        },
+                        "reason": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  ]
+                },
+                "fed": {
+                  "anyOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "from",
+                        "to",
+                        "reason"
+                      ],
+                      "properties": {
+                        "from": {
+                          "type": "string",
+                          "enum": [
+                            "DOVISH",
+                            "NEUTRAL_DOVISH",
+                            "NEUTRAL",
+                            "NEUTRAL_HAWKISH",
+                            "HAWKISH",
+                            "UNKNOWN"
+                          ]
+                        },
+                        "to": {
+                          "type": "string",
+                          "enum": [
+                            "DOVISH",
+                            "NEUTRAL_DOVISH",
+                            "NEUTRAL",
+                            "NEUTRAL_HAWKISH",
+                            "HAWKISH",
+                            "UNKNOWN"
+                          ]
+                        },
+                        "reason": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  ]
+                },
+                "liquidity": {
+                  "anyOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "from",
+                        "to",
+                        "reason"
+                      ],
+                      "properties": {
+                        "from": {
+                          "type": "string",
+                          "enum": [
+                            "EASING",
+                            "STABLE",
+                            "TIGHTENING",
+                            "STRESSED",
+                            "UNKNOWN"
+                          ]
+                        },
+                        "to": {
+                          "type": "string",
+                          "enum": [
+                            "EASING",
+                            "STABLE",
+                            "TIGHTENING",
+                            "STRESSED",
+                            "UNKNOWN"
+                          ]
+                        },
+                        "reason": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  ]
+                },
+                "rates": {
+                  "anyOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "from",
+                        "to",
+                        "reason"
+                      ],
+                      "properties": {
+                        "from": {
+                          "type": "string",
+                          "enum": [
+                            "FALLING",
+                            "STABLE",
+                            "RISING",
+                            "HIGH_AND_STICKY",
+                            "UNKNOWN"
+                          ]
+                        },
+                        "to": {
+                          "type": "string",
+                          "enum": [
+                            "FALLING",
+                            "STABLE",
+                            "RISING",
+                            "HIGH_AND_STICKY",
+                            "UNKNOWN"
+                          ]
+                        },
+                        "reason": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  ]
+                },
+                "dollar": {
+                  "anyOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "from",
+                        "to",
+                        "reason"
+                      ],
+                      "properties": {
+                        "from": {
+                          "type": "string",
+                          "enum": [
+                            "STRENGTHENING",
+                            "STABLE",
+                            "WEAKENING",
+                            "UNKNOWN"
+                          ]
+                        },
+                        "to": {
+                          "type": "string",
+                          "enum": [
+                            "STRENGTHENING",
+                            "STABLE",
+                            "WEAKENING",
+                            "UNKNOWN"
+                          ]
+                        },
+                        "reason": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  ]
+                },
+                "risk": {
+                  "anyOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "from",
+                        "to",
+                        "reason"
+                      ],
+                      "properties": {
+                        "from": {
+                          "type": "string",
+                          "enum": [
+                            "RISK_ON",
+                            "NEUTRAL",
+                            "RISK_OFF",
+                            "UNKNOWN"
+                          ]
+                        },
+                        "to": {
+                          "type": "string",
+                          "enum": [
+                            "RISK_ON",
+                            "NEUTRAL",
+                            "RISK_OFF",
+                            "UNKNOWN"
+                          ]
+                        },
+                        "reason": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            "keyFindings": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "marketImpacts": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "marketReaction": {
+              "type": "string"
+            },
+            "researchImplications": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "risks": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "confidence": {
+              "type": "string",
+              "enum": [
+                "LOW",
+                "MEDIUM",
+                "HIGH"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -64,6 +64,12 @@
     <select id="findAllByOrderByIdDesc" resultMap="FilingMap">
         SELECT <include refid="FilingJoinColumns"/> FROM FILING f JOIN COMPANY c ON c.id = f.company_id ORDER BY f.id DESC
     </select>
+    <select id="findRecentByTicker" resultMap="FilingMap">
+        SELECT <include refid="FilingJoinColumns"/> FROM FILING f JOIN COMPANY c ON c.id = f.company_id
+        WHERE UPPER(c.ticker) = UPPER(#{ticker})
+        ORDER BY f.filing_date DESC, f.id DESC
+        LIMIT #{limit}
+    </select>
     <insert id="insert" parameterType="com.selfinvestor.earnings.filing.FilingPO"
             useGeneratedKeys="true" keyProperty="id" keyColumn="id">
         INSERT INTO FILING (company_id, accession_number, form_type, filing_date, accepted_at,

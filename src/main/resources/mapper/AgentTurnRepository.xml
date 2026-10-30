@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.selfinvestor.earnings.repository.AgentTurnRepository">
+    <select id="findRecentByThreadId" resultMap="TurnMap">
+        SELECT * FROM AGENT_TURN WHERE thread_id = #{threadId} ORDER BY created_at DESC LIMIT 20
+    </select>
+    <resultMap id="TurnMap" type="com.selfinvestor.earnings.agent.runtime.turn.AgentTurn">
+        <id property="id" column="id"/>
+        <result property="threadId" column="thread_id"/>
+        <result property="submissionId" column="submission_id"/>
+        <result property="submissionMetadataJson" column="submission_metadata_json"/>
+        <result property="status" column="status"/>
+        <result property="triggerType" column="trigger_type"/>
+        <result property="goal" column="goal"/>
+        <result property="stepCount" column="step_count"/>
+        <result property="llmCallCount" column="llm_call_count"/>
+        <result property="maxSteps" column="max_steps"/>
+        <result property="maxLlmCalls" column="max_llm_calls"/>
+        <result property="finalResponse" column="final_response"/>
+        <result property="failureMessage" column="failure_message"/>
+        <result property="startedAt" column="started_at"/>
+        <result property="completedAt" column="completed_at"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.selfinvestor.earnings.agent.runtime.turn.AgentTurn">
+        INSERT INTO AGENT_TURN
+        (id, thread_id, submission_id, submission_metadata_json, status, trigger_type, goal, step_count, llm_call_count,
+         max_steps, max_llm_calls, final_response, failure_message, started_at,
+         completed_at, created_at, updated_at)
+        VALUES
+        (#{id}, #{threadId}, #{submissionId}, #{submissionMetadataJson}, #{status}, #{triggerType}, #{goal}, #{stepCount}, #{llmCallCount},
+         #{maxSteps}, #{maxLlmCalls}, #{finalResponse}, #{failureMessage}, #{startedAt},
+         #{completedAt}, #{createdAt}, #{updatedAt})
+    </insert>
+
+    <update id="update" parameterType="com.selfinvestor.earnings.agent.runtime.turn.AgentTurn">
+        UPDATE AGENT_TURN
+        SET status = #{status}, step_count = #{stepCount}, llm_call_count = #{llmCallCount},
+            final_response = #{finalResponse}, failure_message = #{failureMessage},
+            started_at = #{startedAt}, completed_at = #{completedAt}, updated_at = #{updatedAt}
+        WHERE id = #{id}
+    </update>
+
+    <select id="findById" resultMap="TurnMap">
+        SELECT * FROM AGENT_TURN WHERE id = #{id}
+    </select>
+
+    <select id="findActiveByThreadId" resultMap="TurnMap">
+        SELECT * FROM AGENT_TURN
+        WHERE thread_id = #{threadId} AND status IN ('CREATED', 'RUNNING', 'WAITING')
+        ORDER BY created_at DESC
+        LIMIT 1
+    </select>
+</mapper>

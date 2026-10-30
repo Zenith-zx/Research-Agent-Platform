@@ -1,9 +1,11 @@
 package com.selfinvestor.earnings;
 
 import com.sun.source.tree.BlockTree;
+import com.sun.source.tree.ClassTree;
 import com.sun.source.tree.IfTree;
 import com.sun.source.tree.MethodTree;
 import com.sun.source.tree.Tree;
+import com.sun.source.tree.VariableTree;
 import com.sun.source.util.DocTrees;
 import com.sun.source.util.JavacTask;
 import com.sun.source.util.TreePathScanner;
@@ -35,6 +37,20 @@ class ProductionSourceStyleTest {
                     files.getJavaFileObjectsFromPaths(sources));
             DocTrees docs = DocTrees.instance(task);
             task.parse().forEach(unit -> new TreePathScanner<Void, Void>() {
+                @Override
+                public Void visitClass(ClassTree type, Void unused) {
+                    if (type.getKind() == Tree.Kind.ENUM) {
+                        boolean hasDesc = type.getMembers().stream()
+                                .filter(VariableTree.class::isInstance)
+                                .map(VariableTree.class::cast)
+                                .anyMatch(field -> field.getName().contentEquals("desc"));
+                        if (!hasDesc) {
+                            violations.add(location(unit, type) + " enum must declare desc: " + type.getSimpleName());
+                        }
+                    }
+                    return super.visitClass(type, unused);
+                }
+
                 @Override
                 public Void visitMethod(MethodTree method, Void unused) {
                     if (docs.getDocCommentTree(getCurrentPath()) == null) {

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.selfinvestor.earnings.repository.AgentThreadRepository">
+    <resultMap id="ThreadMap" type="com.selfinvestor.earnings.agent.runtime.thread.AgentThread">
+        <id property="id" column="id"/>
+        <result property="subjectType" column="subject_type"/>
+        <result property="subjectCode" column="subject_code"/>
+        <result property="summary" column="summary"/>
+        <result property="memory" column="memory"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.selfinvestor.earnings.agent.runtime.thread.AgentThread">
+        INSERT INTO AGENT_THREAD
+        (id, subject_type, subject_code, summary, memory, created_at, updated_at)
+        VALUES
+        (#{id}, #{subjectType}, #{subjectCode}, #{summary}, #{memory}, #{createdAt}, #{updatedAt})
+    </insert>
+
+    <update id="update" parameterType="com.selfinvestor.earnings.agent.runtime.thread.AgentThread">
+        UPDATE AGENT_THREAD
+        SET summary = #{summary}, memory = #{memory}, updated_at = #{updatedAt}
+        WHERE id = #{id}
+    </update>
+
+    <select id="findById" resultMap="ThreadMap">
+        SELECT * FROM AGENT_THREAD WHERE id = #{id}
+    </select>
+
+    <select id="findBySubject" resultMap="ThreadMap">
+        SELECT * FROM AGENT_THREAD
+        WHERE subject_type = #{subjectType} AND UPPER(subject_code) = UPPER(#{subjectCode})
+        LIMIT 1
+    </select>
+</mapper>

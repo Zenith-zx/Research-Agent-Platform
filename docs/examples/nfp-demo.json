@@ -1,0 +1,32 @@
+{
+  "releaseId": "demo-nfp-2026-09",
+  "indicator": "NFP",
+  "period": "2026-09",
+  "releaseDate": "2026-10-02T12:30:00Z",
+  "source": "SYNTHETIC DEMO ONLY — NOT REAL ECONOMIC DATA",
+  "readings": {
+    "payrolls": {
+      "actual": 120,
+      "consensus": 140,
+      "previous": 150,
+      "revision": -20,
+      "unit": "thousand persons",
+      "consensusSource": "Synthetic demo expectation"
+    },
+    "unemployment": {
+      "actual": 4.3,
+      "previous": 4.2,
+      "unit": "%"
+    },
+    "averageHourlyEarnings": {
+      "actual": 0.2,
+      "previous": 0.3,
+      "unit": "% MoM"
+    },
+    "participation": {
+      "actual": 62.5,
+      "previous": 62.4,
+      "unit": "%"
+    }
+  }
+}

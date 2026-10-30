@@ -20,6 +20,28 @@ import java.util.Map;
 @Service
 @Slf4j
 public class TelegramNotificationService implements NotificationService {
+    /**
+     * 发送宏观报告摘要并提供 Turn 标识，完整报告保留在查询接口中。
+     */
+    @Override
+    public void sendMacro(String turnId, String report) {
+        if (!config.isEnabled()) {
+            return;
+        }
+        if (config.getBotToken() == null || config.getBotToken().isBlank()
+                || config.getChatId() == null || config.getChatId().isBlank()) {
+            throw new IllegalStateException("Telegram credentials are missing");
+        }
+        String text = "US_MACRO 研究（非交易指令）\nTurn: " + turnId + "\n\n"
+                + report.substring(0, Math.min(3500, report.length()))
+                + "\n\n完整结果：GET /api/macro/turns/" + turnId + "/analysis";
+        client.post().uri("/bot{token}/sendMessage", config.getBotToken())
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(Map.of("chat_id", config.getChatId(), "text", text, "disable_web_page_preview", true))
+                .retrieve().toBodilessEntity()
+                .retryWhen(Retry.backoff(3, Duration.ofSeconds(1)).maxBackoff(Duration.ofSeconds(8))
+                        .filter(this::isRetryable)).block();
+    }
     @Resource
     private WebClient.Builder webClientBuilder;
     @Resource

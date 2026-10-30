@@ -1,0 +1,12 @@
+{
+  "releaseId": "demo-fomc-2026-09",
+  "indicator": "FOMC",
+  "period": "2026-09-meeting",
+  "releaseDate": "2026-09-16T18:00:00Z",
+  "source": "SYNTHETIC DEMO ONLY — NOT ACTUAL FED COMMUNICATION",
+  "rateDecision": "Synthetic scenario: target range unchanged.",
+  "statement": "Synthetic scenario: Inflation has made further progress, but uncertainty remains.",
+  "previousStatement": "Synthetic scenario: Inflation remains elevated.",
+  "projections": null,
+  "powellRemarks": null
+}

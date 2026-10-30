@@ -25,6 +25,15 @@ import java.util.List;
 @Slf4j
 @ConditionalOnProperty(prefix = "market-stress.email", name = "enabled", havingValue = "true")
 public class EmailNotificationService implements NotificationService {
+    /**
+     * 复用已配置的邮件收件人发送宏观研究，不影响分析提交事务。
+     */
+    @Override
+    public void sendMacro(String turnId, String report) {
+        if (marketStressProperties.getEmail().isEnabled()) {
+            send("[宏观研究] US_MACRO " + turnId, report);
+        }
+    }
     @Resource
     private JavaMailSender mailSender;
     @Resource

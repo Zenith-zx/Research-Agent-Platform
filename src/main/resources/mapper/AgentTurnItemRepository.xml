@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.selfinvestor.earnings.repository.AgentTurnItemRepository">
+    <resultMap id="ItemMap" type="com.selfinvestor.earnings.agent.runtime.turn.AgentTurnItem">
+        <id property="id" column="id"/>
+        <result property="turnId" column="turn_id"/>
+        <result property="type" column="type"/>
+        <result property="content" column="content"/>
+        <result property="toolName" column="tool_name"/>
+        <result property="callId" column="call_id"/>
+        <result property="payloadJson" column="payload_json"/>
+        <result property="sequence" column="sequence_no"/>
+        <result property="createdAt" column="created_at"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.selfinvestor.earnings.agent.runtime.turn.AgentTurnItem">
+        INSERT INTO AGENT_TURN_ITEM
+        (id, turn_id, type, content, tool_name, call_id, payload_json, sequence_no, created_at)
+        VALUES
+        (#{id}, #{turnId}, #{type}, #{content}, #{toolName}, #{callId}, #{payloadJson}, #{sequence}, #{createdAt})
+    </insert>
+
+    <select id="findByTurnId" resultMap="ItemMap">
+        SELECT * FROM AGENT_TURN_ITEM WHERE turn_id = #{turnId} ORDER BY sequence_no
+    </select>
+
+    <select id="findMaxSequence" resultType="int">
+        SELECT COALESCE(MAX(sequence_no), 0) FROM AGENT_TURN_ITEM WHERE turn_id = #{turnId}
+    </select>
+</mapper>

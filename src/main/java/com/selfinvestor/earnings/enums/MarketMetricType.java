@@ -9,6 +9,7 @@ import lombok.Getter;
 public enum MarketMetricType {
     VIX("CBOE 波动率指数"),
     US2Y("美国两年期国债收益率"),
+    US5Y("美国五年期国债收益率"),
     US10Y("美国十年期国债收益率"),
     US30Y("美国三十年期国债收益率"),
     DXY("美元指数"),

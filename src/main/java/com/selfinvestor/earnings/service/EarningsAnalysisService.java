@@ -6,9 +6,11 @@ import com.selfinvestor.earnings.agent.earnings.EarningsAgentService;
 import com.selfinvestor.earnings.agent.earnings.EarningsConclusionAdapter;
 import com.selfinvestor.earnings.agent.earnings.EarningsEvent;
 import com.selfinvestor.earnings.agent.earnings.model.EarningsConclusion;
+import com.selfinvestor.earnings.agent.runtime.submission.AgentSubmissionService;
 import com.selfinvestor.earnings.analysis.AiAnalysisPO;
 import com.selfinvestor.earnings.analysis.dto.FinancialAnalysisDTO;
 import com.selfinvestor.earnings.config.EarningsProperties;
+import com.selfinvestor.earnings.config.AgentRuntimeProperties;
 import com.selfinvestor.earnings.enums.FilingStatus;
 import com.selfinvestor.earnings.event.AiAnalysisCompletedEvent;
 import com.selfinvestor.earnings.filing.FilingContentProcessor;
@@ -58,6 +60,12 @@ public class EarningsAnalysisService {
     private EarningsProperties properties;
 
     @Resource
+    private AgentRuntimeProperties runtimeProperties;
+
+    @Resource
+    private AgentSubmissionService submissions;
+
+    @Resource
     private ObjectMapper mapper;
 
     @Resource
@@ -82,6 +90,11 @@ public class EarningsAnalysisService {
      * @param filingId Filing 主键
      */
     public void analyze(Long filingId) {
+        if (runtimeProperties.isEnabled()) {
+            log.info("Dynamic Agent Runtime selected: filingId={}", filingId);
+            submissions.submitEarnings(filingId);
+            return;
+        }
         if (properties.getAnalysisMode() == EarningsProperties.AnalysisMode.CHAIN) {
             log.info("Legacy earnings analysis selected: filingId={}", filingId);
             legacyAnalysis.analyze(filingId);

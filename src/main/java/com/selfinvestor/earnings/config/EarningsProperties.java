@@ -1,6 +1,8 @@
 package com.selfinvestor.earnings.config;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.Getter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import java.time.Duration;
@@ -36,9 +38,16 @@ public class EarningsProperties {
      */
     private final Telegram telegram = new Telegram();
 
+    @Getter
+    @AllArgsConstructor
     public enum AnalysisMode {
-        CHAIN,
-        GRAPH
+        CHAIN("旧版单次结构化分析链路"),
+        GRAPH("固定节点的 Earnings Graph 分析链路");
+
+        /**
+         * 分析模式说明。
+         */
+        private final String desc;
     }
 
     @Data
