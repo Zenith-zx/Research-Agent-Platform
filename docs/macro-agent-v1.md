@@ -142,7 +142,8 @@ SELF_INVESTOR_AGENT_MAX_TOOL_FAILURES=5
 SELF_INVESTOR_MACRO_NOTIFICATIONS_ENABLED=false
 ```
 
-仍需已有 MySQL / OPENAI_API_KEY / OPENAI_MODEL 配置。行情和新闻需要 FINNHUB_API_KEY；
+仍需已有 MySQL 和所选模型供应商配置。默认使用 OPENAI_API_KEY / OPENAI_MODEL；
+也可设置 LLM_PROVIDER=DEEPSEEK，并提供 DEEPSEEK_API_KEY / DEEPSEEK_MODEL，详见 [模型策略配置](llm-providers.md)。行情和新闻需要 FINNHUB_API_KEY；
 缺少行情能力不妨碍导入事实，但模型必须报告限制。
 `SELF_INVESTOR_AGENT_ENABLED=true` 也会让已有财报分析走共享动态 Runtime；这是已有开关语义。
 只设置 macro=true 而不启用共享 Runtime 时，研究入口会拒绝入队。

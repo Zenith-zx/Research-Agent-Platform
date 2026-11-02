@@ -1,12 +1,14 @@
 # self-investor：美股财报监听与 AI 分析 MVP
 
-这是一个 Java 17 / Spring Boot 3 / MyBatis 的个人投资研究后端。它既能监听 SEC 财报并生成基本面分析，也能在 QQQ 短期超卖时获取跨资产数据和最近市场新闻，生成 Market Stress / Mean Reversion 研究信号。结果使用 OpenAI Structured Outputs、MySQL append-only 历史记录，并支持 Telegram 与邮件通知。
+这是一个 Java 17 / Spring Boot 3 / MyBatis 的个人投资研究后端。它既能监听 SEC 财报并生成基本面分析，也能在 QQQ 短期超卖时获取跨资产数据和最近市场新闻，生成 Market Stress / Mean Reversion 研究信号。模型接入采用策略模式，支持 OpenAI 与 DeepSeek，结果经过 JSON Schema 校验、MySQL append-only 历史记录，并支持 Telegram 与邮件通知。
 
 本项目不包含自动交易或复杂前端，不自动采集市场一致预期。宏观发布输入可携带有来源的 consensus。
 
 新增 **Macro Agent V1**：CPI / NFP / FOMC / 用户输入 → 唯一 US_MACRO Thread → 共享动态 Agent Runtime
 → 模型选择事实工具 → 结构化宏观判断 → 校验并稀疏更新 MacroState。
 实现入口、配置、示例请求、工具能力边界见 [宏观 Agent 使用与架构说明](docs/macro-agent-v1.md)。
+
+大模型接入和切换配置见 [LLM 策略与 DeepSeek 使用说明](docs/llm-providers.md)，默认仍为 OpenAI。
 
 ## 1. 系统架构
 
@@ -24,7 +26,7 @@ MonitorScheduler
                  -> Planner -> Research -> Critic
                       -> sufficient -> Finalizer
                       -> insufficient -> Replanner -> Research（有预算循环）
-                 -> OpenAI Responses API + strict JSON Schema
+                 -> LlmClient 策略路由（OpenAI / DeepSeek）+ JSON Schema 校验
                  -> AiAnalysisCompletedEvent
                       -> Telegram NotificationService
 
@@ -37,7 +39,7 @@ MarketStressScheduler（America/New_York 交易时段）
   -> OversoldDetectedEvent
        -> 跨资产快照 + 72 小时新闻
        -> MarketContextReadyEvent
-            -> OpenAI strict JSON Schema 分类
+            -> LlmClient 策略路由 + JSON Schema 分类校验
             -> Java Mean Reversion Score + Action 风险护栏
             -> MARKET_STRESS_ANALYSIS append-only 保存
             -> MarketStressAnalysisCompletedEvent
@@ -50,7 +52,8 @@ MarketStressScheduler（America/New_York 交易时段）
 - `monitor`：调度、SEC 类型过滤、开发模拟入口
 - `sec`：SEC submissions 与 filing 下载客户端
 - `filing`：实体、MyBatis Mapper 接口、去重、附件选择、解析、分块与恢复
-- `analysis`：OpenAI 客户端、MyBatis Mapper 接口、Structured Output DTO、分析存储和查询
+- `llm`：供应商策略接口、OpenAI / DeepSeek 实现、共享 HTTP 与结构化校验
+- `analysis`：业务模型提示适配、MyBatis Mapper 接口、Structured Output DTO、分析存储和查询
 - `agent/earnings`：强类型 Agent State、五个节点、条件边、预算、Evidence 和 checkpoint
 - `marketstress`：行情/新闻 Provider 抽象、市场 DTO、历史分析 PO 与重触发策略
 - `service`：财报与市场压力业务服务、Telegram 和 Email 通知实现
@@ -65,8 +68,8 @@ MarketStressScheduler（America/New_York 交易时段）
 
 - Java 17
 - Docker / Docker Compose（推荐用于本地 MySQL）
-- 可访问 SEC、OpenAI 和 Telegram API 的网络
-- OpenAI API Key
+- 可访问 SEC、所选大模型供应商和 Telegram API 的网络
+- OpenAI 或 DeepSeek API Key（仅需所选供应商）
 - 启用 Market Stress 时需要 Finnhub API Key
 - 有效且包含联系方式的 SEC User-Agent，例如 `self-investor/0.1 you@example.com`
 
@@ -98,7 +101,7 @@ Spring Boot 会通过 `spring.config.import` 自动加载项目根目录的 `.en
 | 环境变量 | 说明 |
 |---|---|
 | `SEC_USER_AGENT` | SEC 要求的应用名和真实联系方式 |
-| `OPENAI_API_KEY` | OpenAI API Key，不得提交到 Git |
+| `OPENAI_API_KEY` / `DEEPSEEK_API_KEY` | 仅所选供应商的 API Key，不得提交到 Git |
 | `DB_PASSWORD` | MySQL 密码 |
 
 常用可选配置：
@@ -107,7 +110,10 @@ Spring Boot 会通过 `spring.config.import` 自动加载项目根目录的 `.en
 |---|---:|---|
 | `DB_URL` | 本地 `earnings` 数据库 | JDBC URL |
 | `DB_USERNAME` | `earnings` | 数据库用户 |
-| `OPENAI_MODEL` | `gpt-5.6-sol` | 财报与市场压力 Structured Outputs 分析模型 |
+| `LLM_PROVIDER` | `OPENAI` | 共享模型策略，可选 `OPENAI` / `DEEPSEEK` |
+| `DEEPSEEK_MODEL` | `deepseek-flash` | DeepSeek 模型；完整参数见 [接入说明](docs/llm-providers.md) |
+| `OPENAI_BASE_URL` | `https://api.openai.com` | OpenAI API 根地址 |
+| `OPENAI_MODEL` | `gpt-5.6-sol` | OpenAI 策略使用的模型，兼容原配置 |
 | `OPENAI_CONNECT_TIMEOUT` | `10s` | OpenAI TCP 连接超时 |
 | `OPENAI_READ_TIMEOUT` | `120s` | OpenAI 响应读取超时 |
 | `OPENAI_PROXY_HOST` | 空 | OpenAI HTTP 代理主机；AWS 可留空直连 |
@@ -175,7 +181,7 @@ WHERE symbol = 'QQQ'
 ORDER BY trade_date;
 ```
 
-系统不会调用 Finnhub Premium `/stock/candle`。RSI6 需要至少 7 个价格观测值，盘中计算时通常是 6 个已保存收盘价加当前价；RSI14 至少需要 15 个价格观测值。数据不足时只记录收盘价并输出积累进度，不创建分析记录、不调用 OpenAI。应用必须每个交易日至少成功运行一次；停机跨过多个交易日时，免费 Quote API 无法补回漏掉的历史收盘价。
+系统不会调用 Finnhub Premium `/stock/candle`。RSI6 需要至少 7 个价格观测值，盘中计算时通常是 6 个已保存收盘价加当前价；RSI14 至少需要 15 个价格观测值。数据不足时只记录收盘价并输出积累进度，不创建分析记录、不调用大模型。应用必须每个交易日至少成功运行一次；停机跨过多个交易日时，免费 Quote API 无法补回漏掉的历史收盘价。
 
 ## 5. 添加关注公司
 
@@ -220,7 +226,7 @@ INSERT INTO COMPANY (ticker, cik, company_name, enabled, created_at, updated_at)
 java -jar target/earnings-monitor-0.1.0-SNAPSHOT.jar
 ```
 
-日志会显示 filing 发现、附件下载和选择、清洗字符数、OpenAI 耗时以及 Telegram 推送结果。HTTP 429、5xx 和网络异常最多重试 3 次，使用指数退避；不可重试的解析错误会写入 `filing.error_message` 并将状态设为 `FAILED`。首次启动默认只注册最近 30 天的 Filing；线程池满载时扫描线程会主动分担任务形成反压，不会丢失已提交事件。应用重启后会分批恢复近期停留在 `DETECTED`、`DOWNLOADING`、`DOWNLOADED`、`PARSING`、`PARSED` 或 `ANALYZING` 状态的任务。
+日志会显示 filing 发现、附件下载和选择、清洗字符数、模型调用耗时以及 Telegram 推送结果。HTTP 429、5xx 和网络异常最多重试 3 次，使用指数退避；不可重试的解析错误会写入 `filing.error_message` 并将状态设为 `FAILED`。首次启动默认只注册最近 30 天的 Filing；线程池满载时扫描线程会主动分担任务形成反压，不会丢失已提交事件。应用重启后会分批恢复近期停留在 `DETECTED`、`DOWNLOADING`、`DOWNLOADED`、`PARSING`、`PARSED` 或 `ANALYZING` 状态的任务。
 
 ## 7. 测试
 
@@ -233,14 +239,15 @@ java -jar target/earnings-monitor-0.1.0-SNAPSHOT.jar
 - `FilingDocumentSelectorTest`：`EX-99.1` 优先于 8-K 主文档和 XBRL 辅助文件
 - `FilingDeduplicationTest`：重复 accession number 只保存一次
 - `FilingParserTest`：使用本地 HTML fixture 验证噪音删除和表格数字保留
-- `AiAnalysisServiceTest`：mock OpenAI 客户端验证输入与 DTO
-- `OpenAiClientTest`：mock HTTP server 验证 Responses API strict JSON Schema 请求和反序列化
+- `AiAnalysisPOServiceTest`：mock 业务模型适配层验证输入与 DTO
+- `LlmStrategyHttpTest`：mock HTTP server 验证 OpenAI / DeepSeek 请求、路由、校验与有限重试
+- `LlmBusinessIntegrationTest`：真实 Spring 策略装配与财报、宏观、市场压力 Schema 集成
 - `SecMonitorTest`：mock SEC 返回，验证仅处理相关 filing
 - `TechnicalIndicatorServiceTest`：已知序列验证 Wilder RSI6 / RSI14
 - `OversoldTriggerTest`：验证可配置阈值
 - `CooldownTest`：验证同标的冷却期内不重复分析
 - `MeanReversionScoreTest`：验证配置权重和系统性风险护栏
-- `MarketStressAiServiceTest`：mock 共用 OpenAI 客户端
+- `MarketStressAiServiceTest`：mock 共用业务模型适配层
 - `MarketSnapshotBuilderTest`：验证部分跨资产数据缺失时降级
 - `SchedulerTest`：验证非交易时间和纽约 DST
 

@@ -49,7 +49,7 @@ earnings:
     read-timeout: 30s
     min-request-interval: 120ms
   openai:
-    base-url: https://api.openai.com
+    base-url: ${OPENAI_BASE_URL:https://api.openai.com}
     api-key: ${OPENAI_API_KEY:}
     model: ${OPENAI_MODEL:gpt-5.6-sol}
     max-input-chars: ${OPENAI_MAX_INPUT_CHARS:60000}
@@ -63,6 +63,19 @@ earnings:
     chat-id: ${TELEGRAM_CHAT_ID:}
 
 self-investor:
+  llm:
+    provider: ${LLM_PROVIDER:OPENAI}
+  deepseek:
+    base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
+    api-key: ${DEEPSEEK_API_KEY:}
+    model: ${DEEPSEEK_MODEL:deepseek-flash}
+    max-input-chars: ${DEEPSEEK_MAX_INPUT_CHARS:60000}
+    max-tokens: ${DEEPSEEK_MAX_TOKENS:8192}
+    thinking-enabled: ${DEEPSEEK_THINKING_ENABLED:false}
+    connect-timeout: ${DEEPSEEK_CONNECT_TIMEOUT:10s}
+    read-timeout: ${DEEPSEEK_READ_TIMEOUT:120s}
+    proxy-host: ${DEEPSEEK_PROXY_HOST:}
+    proxy-port: ${DEEPSEEK_PROXY_PORT:0}
   macro:
     enabled: ${SELF_INVESTOR_MACRO_ENABLED:true}
     max-steps: ${SELF_INVESTOR_MACRO_MAX_STEPS:15}

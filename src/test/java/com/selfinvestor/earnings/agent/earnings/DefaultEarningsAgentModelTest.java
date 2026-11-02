@@ -5,8 +5,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.selfinvestor.earnings.agent.earnings.graph.AgentNodeName;
 import com.selfinvestor.earnings.agent.earnings.model.PlannerOutput;
 import com.selfinvestor.earnings.agent.earnings.prompt.EarningsPromptService;
-import com.selfinvestor.earnings.agent.earnings.prompt.OpenAiEarningsAgentModel;
-import com.selfinvestor.earnings.analysis.OpenAiClient;
+import com.selfinvestor.earnings.agent.earnings.prompt.DefaultEarningsAgentModel;
+import com.selfinvestor.earnings.llm.LlmClient;
 import com.selfinvestor.earnings.config.EarningsProperties;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -18,11 +18,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-class OpenAiEarningsAgentModelTest {
+class DefaultEarningsAgentModelTest {
 
     @Test
     void retriesInvalidJsonAndCountsEachLlmCall() {
-        OpenAiClient client = mock(OpenAiClient.class);
+        LlmClient client = mock(LlmClient.class);
         EarningsPromptService prompts = prompts();
         EarningsProperties properties = new EarningsProperties();
         properties.getEarningsAgent().setJsonRetryAttempts(2);
@@ -41,13 +41,13 @@ class OpenAiEarningsAgentModelTest {
 
     @Test
     void failsSafelyAfterJsonRetriesAreExhausted() {
-        OpenAiClient client = mock(OpenAiClient.class);
+        LlmClient client = mock(LlmClient.class);
         EarningsProperties properties = new EarningsProperties();
         properties.getEarningsAgent().setJsonRetryAttempts(1);
         when(client.generateStructured(anyString(), anyString(), any(), anyString(), eq(PlannerOutput.class)))
                 .thenThrow(new IllegalArgumentException("invalid JSON"));
         EarningsAgentState state = state();
-        OpenAiEarningsAgentModel model = model(client, prompts(), properties);
+        DefaultEarningsAgentModel model = model(client, prompts(), properties);
 
         assertThatThrownBy(() -> model.plan(state))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -63,9 +63,9 @@ class OpenAiEarningsAgentModelTest {
         return prompts;
     }
 
-    private OpenAiEarningsAgentModel model(OpenAiClient client, EarningsPromptService prompts,
+    private DefaultEarningsAgentModel model(LlmClient client, EarningsPromptService prompts,
                                            EarningsProperties properties) {
-        OpenAiEarningsAgentModel model = new OpenAiEarningsAgentModel();
+        DefaultEarningsAgentModel model = new DefaultEarningsAgentModel();
         ReflectionTestUtils.setField(model, "client", client);
         ReflectionTestUtils.setField(model, "prompts", prompts);
         ReflectionTestUtils.setField(model, "mapper", new ObjectMapper());

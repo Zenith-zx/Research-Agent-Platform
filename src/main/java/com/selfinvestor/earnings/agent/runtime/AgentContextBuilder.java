@@ -1,5 +1,6 @@
 package com.selfinvestor.earnings.agent.runtime;
 
+import com.selfinvestor.earnings.llm.LlmClient;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.selfinvestor.earnings.agent.runtime.thread.AgentThread;
@@ -8,7 +9,6 @@ import com.selfinvestor.earnings.agent.runtime.tool.ToolRegistry;
 import com.selfinvestor.earnings.agent.runtime.turn.AgentTurn;
 import com.selfinvestor.earnings.agent.runtime.turn.AgentTurnItem;
 import com.selfinvestor.earnings.agent.runtime.turn.TurnItemService;
-import com.selfinvestor.earnings.config.EarningsProperties;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Component;
 
@@ -29,7 +29,7 @@ public class AgentContextBuilder {
     @Resource
     private ObjectMapper mapper;
     @Resource
-    private EarningsProperties properties;
+    private LlmClient llmClient;
     @Resource
     private com.selfinvestor.earnings.agent.runtime.profile.AgentProfiles profiles;
 
@@ -52,7 +52,7 @@ public class AgentContextBuilder {
         var history = new java.util.ArrayList<>(items.history(turn.getId()).stream().map(this::item).toList());
         root.put("turnItems", history);
         String serialized = serialize(root);
-        int maxChars = properties.getOpenai().getMaxInputChars();
+        int maxChars = llmClient.maxInputChars();
         while (serialized.length() > maxChars) {
             int removable = -1;
             for (int index = 0; index < history.size() - 1; index++) {

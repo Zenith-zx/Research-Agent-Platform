@@ -120,10 +120,11 @@ public class EarningsProperties {
         /**
          * OpenAI API 根地址。
          */
-        private String baseUrl;
+        private String baseUrl = "https://api.openai.com";
         /**
          * OpenAI API Key。
          */
+        @lombok.ToString.Exclude
         private String apiKey;
         /**
          * 分析使用的模型名称。

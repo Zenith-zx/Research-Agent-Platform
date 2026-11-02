@@ -1,12 +1,12 @@
 package com.selfinvestor.earnings.agent.runtime;
 
+import com.selfinvestor.earnings.llm.LlmClient;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.selfinvestor.earnings.agent.runtime.submission.Submission;
 import com.selfinvestor.earnings.agent.runtime.submission.SubmissionType;
 import com.selfinvestor.earnings.analysis.AiAnalysisPO;
 import com.selfinvestor.earnings.analysis.dto.FinancialAnalysisDTO;
-import com.selfinvestor.earnings.config.EarningsProperties;
 import com.selfinvestor.earnings.enums.FilingStatus;
 import com.selfinvestor.earnings.enums.FundamentalTrend;
 import com.selfinvestor.earnings.event.AgentTurnCompletedEvent;
@@ -37,7 +37,7 @@ public class EarningsRuntimeCompletionListener {
     @Resource
     private AiAnalysisRepository analyses;
     @Resource
-    private EarningsProperties properties;
+    private LlmClient llmClient;
     @Resource
     private ObjectMapper mapper;
     @Resource
@@ -70,7 +70,7 @@ public class EarningsRuntimeCompletionListener {
         FinancialAnalysisDTO result = compatibleResult(filing, event.getTurn().getFinalResponse());
         String json = serialize(result);
         transactions.executeWithoutResult(status -> {
-            AiAnalysisPO saved = new AiAnalysisPO(filing, properties.getOpenai().getModel(), json, result.getSummary());
+            AiAnalysisPO saved = new AiAnalysisPO(filing, llmClient.modelName(), json, result.getSummary());
             analyses.insert(saved);
             filings.updateStatus(filingId, FilingStatus.COMPLETED, null);
             events.publishEvent(new AiAnalysisCompletedEvent(filingId, saved.getId()));

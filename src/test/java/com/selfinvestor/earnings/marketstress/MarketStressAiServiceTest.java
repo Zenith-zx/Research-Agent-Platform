@@ -1,7 +1,7 @@
 package com.selfinvestor.earnings.marketstress;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.selfinvestor.earnings.analysis.OpenAiClient;
+import com.selfinvestor.earnings.analysis.AnalysisModelService;
 import com.selfinvestor.earnings.config.MarketStressProperties;
 import com.selfinvestor.earnings.enums.FinancialStress;
 import com.selfinvestor.earnings.enums.FundamentalDamage;
@@ -28,11 +28,11 @@ import static org.mockito.Mockito.when;
 
 class MarketStressAiServiceTest {
     /**
-     * 验证市场上下文发送给共用 OpenAI 客户端并由 Java 覆盖最终评分。
+     * 验证市场上下文发送给共用业务模型适配层并由 Java 覆盖最终评分。
      */
     @Test
     void sendsStructuredContextAndAppliesJavaScore() {
-        OpenAiClient client = mock(OpenAiClient.class);
+        AnalysisModelService client = mock(AnalysisModelService.class);
         MarketStressAnalysisDTO modelResult = new MarketStressAnalysisDTO();
         modelResult.setReversibility(Reversibility.MEDIUM);
         modelResult.setFundamentalDamage(FundamentalDamage.LIMITED);
@@ -45,7 +45,7 @@ class MarketStressAiServiceTest {
         MeanReversionScoreService scoreService = new MeanReversionScoreService();
         ReflectionTestUtils.setField(scoreService, "properties", new MarketStressProperties());
         MarketStressAiService service = new MarketStressAiService();
-        ReflectionTestUtils.setField(service, "openAiClient", client);
+        ReflectionTestUtils.setField(service, "modelService", client);
         ReflectionTestUtils.setField(service, "objectMapper", new ObjectMapper().findAndRegisterModules());
         ReflectionTestUtils.setField(service, "scoreService", scoreService);
         MarketStressAnalysisDTO result = service.analyze(snapshot(), Collections.emptyList());

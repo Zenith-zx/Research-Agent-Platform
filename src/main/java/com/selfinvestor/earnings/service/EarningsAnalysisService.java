@@ -1,5 +1,6 @@
 package com.selfinvestor.earnings.service;
 
+import com.selfinvestor.earnings.llm.LlmClient;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.selfinvestor.earnings.agent.earnings.EarningsAgentService;
@@ -58,6 +59,8 @@ public class EarningsAnalysisService {
 
     @Resource
     private EarningsProperties properties;
+    @Resource
+    private LlmClient llmClient;
 
     @Resource
     private AgentRuntimeProperties runtimeProperties;
@@ -125,7 +128,7 @@ public class EarningsAnalysisService {
         FinancialAnalysisDTO compatible = adapter.toLegacyDto(event, conclusion);
         String json = serialize(compatible);
         transactions.executeWithoutResult(tx -> {
-            AiAnalysisPO saved = new AiAnalysisPO(filing, properties.getOpenai().getModel(), json,
+            AiAnalysisPO saved = new AiAnalysisPO(filing, llmClient.modelName(), json,
                     compatible.getSummary());
             analyses.insert(saved);
             filings.updateStatus(filingId, FilingStatus.COMPLETED, null);
@@ -141,7 +144,7 @@ public class EarningsAnalysisService {
      */
     private String buildSourceContent(List<FilingDocumentPO> selected) {
         List<FilingContentProcessor.ContentChunk> chunks = processor.process(selected);
-        int maxChars = properties.getOpenai().getMaxInputChars();
+        int maxChars = llmClient.maxInputChars();
         int perChunk = Math.max(1, maxChars / Math.max(1, chunks.size()));
         StringBuilder content = new StringBuilder();
         for (FilingContentProcessor.ContentChunk chunk : chunks) {

@@ -1,6 +1,6 @@
 package com.selfinvestor.earnings.filing;
 
-import com.selfinvestor.earnings.config.EarningsProperties;
+import com.selfinvestor.earnings.llm.LlmClient;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
 import lombok.AllArgsConstructor;
@@ -47,7 +47,7 @@ public class FilingContentProcessor {
         private String content;
     }
     @Resource
-    private EarningsProperties properties;
+    private LlmClient llmClient;
     private int maxChars;
 
     /**
@@ -55,7 +55,7 @@ public class FilingContentProcessor {
      */
     @PostConstruct
     void initialize() {
-        maxChars = properties.getOpenai().getMaxInputChars();
+        maxChars = llmClient.maxInputChars();
     }
 
     /**

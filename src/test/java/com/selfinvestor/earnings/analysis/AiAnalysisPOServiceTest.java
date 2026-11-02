@@ -2,7 +2,6 @@ package com.selfinvestor.earnings.analysis;
 
 import com.selfinvestor.earnings.analysis.dto.FinancialAnalysisDTO;
 import com.selfinvestor.earnings.company.CompanyPO;
-import com.selfinvestor.earnings.config.EarningsProperties;
 import com.selfinvestor.earnings.enums.FundamentalTrend;
 import com.selfinvestor.earnings.filing.FilingPO;
 import com.selfinvestor.earnings.filing.FilingContentProcessor;
@@ -22,34 +21,34 @@ import static org.mockito.Mockito.*;
 
 class AiAnalysisPOServiceTest {
     /**
-     * 验证解析文档会被发送给 OpenAI 并返回结构化结果。
+     * 验证解析文档会被发送给当前模型并返回结构化结果。
      */
     @Test
-    void sendsParsedDocumentToOpenAiAndReturnsStructuredResult() {
-        EarningsProperties properties = new EarningsProperties();
-        properties.getOpenai().setMaxInputChars(60000);
-        OpenAiClient openAi = mock(OpenAiClient.class);
+    void sendsParsedDocumentToModelAndReturnsStructuredResult() {
+        AnalysisModelService modelService = mock(AnalysisModelService.class);
         FinancialAnalysisDTO expected = new FinancialAnalysisDTO("NVIDIA", "NVDA", "Q2", "Growth", null, null,
                 Collections.emptyList(), Collections.singletonList("Revenue growth"), Collections.emptyList(),
                 Collections.emptyList(), Collections.emptyList(), FundamentalTrend.IMPROVING,
                 "Growth accelerated", false, null, false, "当前版本没有接入分析师一致预期，因此无法判断 Beat/Miss。", 8, "Strong quarter");
-        when(openAi.analyze(contains("Revenue was $30 billion"))).thenReturn(expected);
+        when(modelService.analyze(contains("Revenue was $30 billion"))).thenReturn(expected);
         CompanyPO company = new CompanyPO("NVDA", "0001045810", "NVIDIA", true);
         FilingPO filing = new FilingPO(company, "0001-24-000001", "10-Q", LocalDate.now(), Instant.now(), "q.htm", "url");
         FilingDocumentPO document = new FilingDocumentPO(filing, "10-Q", "q.htm", "Quarterly report", "url", "raw");
         document.parsed("Revenue was $30 billion", true);
 
         FilingContentProcessor processor = new FilingContentProcessor();
-        ReflectionTestUtils.setField(processor, "properties", properties);
+        var llm = mock(com.selfinvestor.earnings.llm.LlmClient.class);
+        when(llm.maxInputChars()).thenReturn(60000);
+        ReflectionTestUtils.setField(processor, "llmClient", llm);
         ReflectionTestUtils.invokeMethod(processor, "initialize");
         TestableService service = new TestableService();
         ReflectionTestUtils.setField(service, "processor", processor);
-        ReflectionTestUtils.setField(service, "client", openAi);
+        ReflectionTestUtils.setField(service, "client", modelService);
         ReflectionTestUtils.setField(service, "mapper", new com.fasterxml.jackson.databind.ObjectMapper());
         ReflectionTestUtils.setField(service, "analysisExecutor", (java.util.concurrent.Executor) Runnable::run);
         FinancialAnalysisDTO result = service.call(filing, Collections.singletonList(document));
         assertThat(result).isSameAs(expected);
-        verify(openAi).analyze(contains("Ticker: NVDA"));
+        verify(modelService).analyze(contains("Ticker: NVDA"));
     }
 
     private static class TestableService extends AiAnalysisService {

@@ -2,7 +2,7 @@ package com.selfinvestor.earnings.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.selfinvestor.earnings.analysis.OpenAiClient;
+import com.selfinvestor.earnings.analysis.AnalysisModelService;
 import com.selfinvestor.earnings.marketstress.dto.MarketNewsDTO;
 import com.selfinvestor.earnings.marketstress.dto.MarketSnapshotDTO;
 import com.selfinvestor.earnings.marketstress.dto.MarketStressAnalysisDTO;
@@ -23,7 +23,7 @@ import java.util.Map;
 @Slf4j
 public class MarketStressAiService {
     @Resource
-    private OpenAiClient openAiClient;
+    private AnalysisModelService modelService;
     @Resource
     private ObjectMapper objectMapper;
     @Resource
@@ -48,7 +48,7 @@ public class MarketStressAiService {
         }
         log.info("AI market stress analysis started: symbol={}", snapshot.getQqq().getSymbol());
         Instant started = Instant.now();
-        MarketStressAnalysisDTO analysis = openAiClient.analyzeMarketStress(input);
+        MarketStressAnalysisDTO analysis = modelService.analyzeMarketStress(input);
         analysis.setSymbol(snapshot.getQqq().getSymbol());
         analysis.setAnalysisTimestamp(snapshot.getTimestamp());
         scoreService.apply(snapshot.getQqq(), analysis);

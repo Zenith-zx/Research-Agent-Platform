@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.selfinvestor.earnings.agent.earnings.EarningsAgentState;
 import com.selfinvestor.earnings.agent.earnings.graph.AgentNodeName;
 import com.selfinvestor.earnings.agent.earnings.model.*;
-import com.selfinvestor.earnings.analysis.OpenAiClient;
+import com.selfinvestor.earnings.llm.LlmClient;
 import com.selfinvestor.earnings.config.EarningsProperties;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -15,13 +15,13 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * 将每个节点的强类型输入输出映射到现有 OpenAI Responses API 客户端。
+ * 将各节点的强类型输入输出映射到共享模型策略客户端，保留原有预算和重试逻辑。
  */
 @Component
 @Slf4j
-public class OpenAiEarningsAgentModel implements EarningsAgentModel {
+public class DefaultEarningsAgentModel implements EarningsAgentModel {
     @Resource
-    private OpenAiClient client;
+    private LlmClient client;
 
     @Resource
     private EarningsPromptService prompts;

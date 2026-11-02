@@ -1,13 +1,13 @@
 package com.selfinvestor.earnings.service;
 
+import com.selfinvestor.earnings.llm.LlmClient;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.selfinvestor.earnings.analysis.AiAnalysisPO;
-import com.selfinvestor.earnings.analysis.OpenAiClient;
+import com.selfinvestor.earnings.analysis.AnalysisModelService;
 import com.selfinvestor.earnings.analysis.dto.FinancialAnalysisDTO;
 import com.selfinvestor.earnings.common.exception.BusinessException;
-import com.selfinvestor.earnings.config.EarningsProperties;
 import com.selfinvestor.earnings.enums.FilingStatus;
 import com.selfinvestor.earnings.event.AiAnalysisCompletedEvent;
 import com.selfinvestor.earnings.filing.*;
@@ -46,13 +46,13 @@ public class AiAnalysisService {
     private FilingContentProcessor processor;
 
     @Resource
-    private OpenAiClient client;
+    private AnalysisModelService client;
 
     @Resource
     private ObjectMapper mapper;
 
     @Resource
-    private EarningsProperties properties;
+    private LlmClient llmClient;
 
     @Resource
     private ApplicationEventPublisher events;
@@ -82,7 +82,7 @@ public class AiAnalysisService {
         FilingPO filing = filings.findOneById(filingId).orElseThrow();
         List<FilingDocumentPO> selected = documents.findAllByFilingIdAndSelectedForAnalysisTrue(filingId);
         transactions.executeWithoutResult(tx -> filings.updateStatus(filingId, FilingStatus.ANALYZING, null));
-        log.info("OpenAI analysis started: {} accession={}", filing.getCompany().getTicker(), filing.getAccessionNumber());
+        log.info("LLM analysis started: {} accession={}", filing.getCompany().getTicker(), filing.getAccessionNumber());
         Instant started = Instant.now();
         FinancialAnalysisDTO result = analyzeContent(filing, selected);
         String json;
@@ -92,12 +92,12 @@ public class AiAnalysisService {
             throw new IllegalStateException("Cannot serialize analysis", exception);
         }
         transactions.executeWithoutResult(tx -> {
-            AiAnalysisPO saved = new AiAnalysisPO(filing, properties.getOpenai().getModel(), json, result.getSummary());
+            AiAnalysisPO saved = new AiAnalysisPO(filing, llmClient.modelName(), json, result.getSummary());
             analyses.insert(saved);
             filings.updateStatus(filingId, FilingStatus.COMPLETED, null);
             events.publishEvent(new AiAnalysisCompletedEvent(filingId, saved.getId()));
         });
-        log.info("OpenAI analysis completed, duration={}ms", Duration.between(started, Instant.now()).toMillis());
+        log.info("LLM analysis completed, duration={}ms", Duration.between(started, Instant.now()).toMillis());
     }
 
     /**

@@ -1,17 +1,17 @@
 package com.selfinvestor.earnings.agent.runtime;
 
 import com.selfinvestor.earnings.agent.runtime.decision.AgentDecision;
-import com.selfinvestor.earnings.analysis.OpenAiClient;
+import com.selfinvestor.earnings.llm.LlmClient;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Component;
 
 /**
- * 通过现有 OpenAI Responses API 获取 AgentDecision。
+ * 通过共享大模型策略获取 AgentDecision，不绑定具体供应商。
  */
 @Component
-public class OpenAiAgentDecisionModel implements AgentDecisionModel {
+public class DefaultAgentDecisionModel implements AgentDecisionModel {
     @Resource
-    private OpenAiClient client;
+    private LlmClient client;
     @Resource
     private AgentDecisionPromptService prompts;
     @Resource
