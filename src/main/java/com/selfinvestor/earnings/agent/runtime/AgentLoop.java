@@ -1,6 +1,7 @@
 package com.selfinvestor.earnings.agent.runtime;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.selfinvestor.earnings.agent.runtime.decision.AgentDecision;
 import com.selfinvestor.earnings.agent.runtime.decision.DecisionType;
@@ -161,8 +162,7 @@ public class AgentLoop {
         for (var item : items.history(turn.getId())) {
             try {
                 if (item.getType() == TurnItemType.TOOL_CALL) {
-                    Map<String, Object> arguments = mapper.readValue(item.getPayloadJson(),
-                            new com.fasterxml.jackson.core.type.TypeReference<>() { });
+                    Map<String, Object> arguments = mapper.readValue(item.getPayloadJson(), new TypeReference<>() { });
                     repeatedCalls.merge(item.getToolName() + ":" + json(new TreeMap<>(arguments)), 1, Integer::sum);
                 } else if (item.getType() == TurnItemType.TOOL_RESULT
                         && !mapper.readTree(item.getPayloadJson()).path("success").asBoolean()) {
